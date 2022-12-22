@@ -2,7 +2,16 @@
 #include "Plugin.h"
 #include "IExamInterface.h"
 
+#include "HelperFuncts.h"
+#include "Behaviors.h"
+
 using namespace std;
+
+//#define DEMO
+#ifdef DEMO
+#define DEMO_STEERING
+#define DEMO_INPUT
+#endif 
 
 //Called only once, during initialization
 void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
@@ -17,6 +26,19 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	info.Student_FirstName = "Reï";
 	info.Student_LastName = "Messely";
 	info.Student_Class = "2DAE15";
+
+	// -----------------------------------------------------------------------------------------
+
+	m_pSteeringOutputData = new SteeringPlugin_Output();
+
+	// Initialise blackboard data
+	Elite::Blackboard* pBlackboard = new Elite::Blackboard();
+	pBlackboard->AddData("testName", "templated Data");
+	pBlackboard->AddData("interface", static_cast<IExamInterface*>(m_pInterface));
+	pBlackboard->AddData("steering", static_cast<SteeringPlugin_Output*>(m_pSteeringOutputData));
+
+	// Root behavior is the first behavior that is connected to the root node.
+	m_pBehaviorTree = new Elite::BehaviorTree(pBlackboard, new Elite::BehaviorAction(&BT_Actions::ChangeToWander));
 }
 
 //Called only once
@@ -28,7 +50,13 @@ void Plugin::DllInit()
 //Called only once
 void Plugin::DllShutdown()
 {
-	//Called wheb the plugin gets unloaded
+	//Called when the plugin gets unloaded
+
+	SAFE_DELETE(m_pBehaviorTree);
+	SAFE_DELETE(m_pSteeringOutputData);
+
+	// No need to delete blackboard since behavior tree gains ownership
+	//SAFE_DELETE(m_pBlackboard);
 }
 
 //Called only once, during initialization
@@ -55,6 +83,8 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 //(=Use only for Debug Purposes)
 void Plugin::Update(float dt)
 {
+	// DEBUG ONLY
+#ifdef DEMO_INPUT
 	//Demo Event Code
 	//In the end your AI should be able to walk around without external input
 	if (m_pInterface->Input_IsMouseButtonUp(Elite::InputMouseButton::eLeft))
@@ -112,14 +142,21 @@ void Plugin::Update(float dt)
 		m_pInterface->Inventory_GetItem(m_InventorySlot, info);
 		std::cout << (int)info.Type << std::endl;
 	}
+#endif
 }
 
 //Update
 //This function calculates the new SteeringOutput, called once per frame
+// F12 ON THIS "SteeringPlugin_Output" STRUCT TO VIEW FILE
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
-	auto steering = SteeringPlugin_Output();
+	SteeringPlugin_Output* pSteering{};
 	
+	m_pBehaviorTree->Update(dt);
+
+	m_pBehaviorTree->GetBlackboard()->GetData("steering", pSteering);
+
+#ifdef DEMO_STEERING
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
@@ -194,8 +231,9 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	m_GrabItem = false; //Reset State
 	m_UseItem = false;
 	m_RemoveItem = false;
+#endif 
 
-	return steering;
+	return *pSteering;
 }
 
 //This function should only be used for rendering debug elements

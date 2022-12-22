@@ -2,6 +2,10 @@
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
 
+#include "EDecisionMaking.h"
+#include "EBehaviorTree.h"
+#include "EBlackboard.h"
+
 class IBaseInterface;
 class IExamInterface;
 
@@ -35,6 +39,9 @@ private:
 	float m_AngSpeed = 0.f; //Demo purpose
 
 	UINT m_InventorySlot = 0;
+
+	Elite::BehaviorTree* m_pBehaviorTree{ nullptr };
+	SteeringPlugin_Output* m_pSteeringOutputData;
 };
 
 //ENTRY
