@@ -67,6 +67,24 @@ bool InventoryManager::HaveGun() const
 	return false;
 }
 
+bool InventoryManager::HaveItem(eItemType itemType) const
+{
+	ItemInfo itemInfo;
+	for (UINT i{ 0 }; i < m_pInterface->Inventory_GetCapacity(); ++i)
+	{
+		if (m_Inventory.at(i) == eItemType::RANDOM_DROP) continue;
+
+		if (m_pInterface->Inventory_GetItem(i, itemInfo))
+		{
+			if (itemInfo.Type == itemType)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool InventoryManager::IsInventoryFull() const
 {
 	return GetFreeItemSlot() == invalid_inventory_slot;
@@ -108,6 +126,28 @@ bool InventoryManager::GrabAndAddItem(EntityInfo entityInfo)
 	UINT slot = GetFreeItemSlot();
 	m_pInterface->Inventory_AddItem(slot, itemInfo);
 	m_Inventory[slot] = itemInfo.Type;
+	return true;
+}
+
+bool InventoryManager::UseMedkit()
+{
+	if (!HaveItem(eItemType::MEDKIT))
+	{
+		return false;
+	}
+
+	UINT idx = std::distance(m_Inventory.begin(), std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::MEDKIT));
+	m_pInterface->Inventory_UseItem(idx);
+	ItemInfo itemInfo{};
+	if (m_pInterface->Inventory_GetItem(idx, itemInfo))
+	{
+		if (m_pInterface->Medkit_GetHealth(itemInfo) <= 0)
+		{
+			m_pInterface->Inventory_RemoveItem(idx);
+			m_Inventory.at(idx) = eItemType::RANDOM_DROP;
+		}
+	}
+
 	return true;
 }
 

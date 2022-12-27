@@ -96,6 +96,17 @@ namespace Elite
 	private:
 		unsigned int m_CurrentBehaviorIndex = 0;
 	};
+
+	//--- GROUP ---
+	class BehaviorGroup : public BehaviorComposite
+	{
+	public:
+		explicit BehaviorGroup(std::vector<IBehavior*> childBehaviors) :
+			BehaviorComposite(childBehaviors) {}
+		virtual ~BehaviorGroup() = default;
+
+		virtual BehaviorState Execute(Blackboard* pBlackBoard) override;
+	};
 #pragma endregion
 
 	//-----------------------------------------------------------------

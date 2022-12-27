@@ -88,6 +88,21 @@ BehaviorState BehaviorPartialSequence::Execute(Blackboard* pBlackBoard)
 	m_CurrentState = BehaviorState::Success;
 	return m_CurrentState;
 }
+
+//GROUP
+BehaviorState Elite::BehaviorGroup::Execute(Blackboard* pBlackBoard)
+{
+	std::vector<int> amount;
+	for (int i{ 0 }; i < 3; ++i) amount.push_back(0);
+
+	for (const auto& child : m_ChildBehaviors)
+	{
+		m_CurrentState = child->Execute(pBlackBoard);
+		++amount[static_cast<int>(m_CurrentState)];
+	}
+	int maxEl = std::distance(amount.begin(),std::max_element(amount.begin(), amount.end()));
+	return static_cast<BehaviorState>(maxEl);
+}
 #pragma endregion
 //-----------------------------------------------------------------
 // BEHAVIOR TREE CONDITIONAL (IBehavior)

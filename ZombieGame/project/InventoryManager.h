@@ -21,11 +21,13 @@ public:
 	void DEBUG_PrintInv() const;
 
 	bool HaveGun() const;
+	bool HaveItem(eItemType itemType) const;
 	bool IsInventoryFull() const;
 
 	UINT GetFreeItemSlot() const;
 
 	bool GrabAndAddItem(EntityInfo entityInfo);
+	bool UseMedkit();
 	void DeleteGarbage();
 private:
 	IExamInterface* m_pInterface = nullptr;

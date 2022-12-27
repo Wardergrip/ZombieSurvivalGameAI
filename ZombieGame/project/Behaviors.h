@@ -116,10 +116,21 @@ namespace BT_Actions
 
 		auto agentInfo = pInterface->Agent_GetInfo();
 
+		bool houseLeaveLocationValid{ false };
+		if (pBlackboard->GetData("houseLeaveLocationValid", houseLeaveLocationValid))
+		{
+			if (!houseLeaveLocationValid)
+			{
+				pBlackboard->ChangeData("houseLeaveLocation", agentInfo.Position);
+				pBlackboard->ChangeData("houseLeaveLocationValid", true);
+			}
+		}
+
 		auto target = pHousesInFOV->begin()->Center;
 
 		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
 
+		pSteering->AutoOrient = true;
 		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
 		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
 		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
@@ -175,6 +186,7 @@ namespace BT_Actions
 
 		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
 
+		pSteering->AutoOrient = true;
 		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
 		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
 		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
@@ -202,6 +214,74 @@ namespace BT_Actions
 
 		return Elite::BehaviorState::Success;
 	}
+
+	Elite::BehaviorState GoOutsideOfHouse(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		SteeringPlugin_Output* pSteering{};
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+		bool houseLeaveLocationValid{ false };
+		if (pBlackboard->GetData("houseLeaveLocationValid", houseLeaveLocationValid))
+		{
+			if (!houseLeaveLocationValid)
+			{
+				return Elite::BehaviorState::Failure;
+			}
+		}
+		else
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		Elite::Vector2 target{};
+		// If data validation fails return failure
+		if (!pBlackboard->GetData("houseLeaveLocation", target))
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
+
+		pSteering->AutoOrient = true;
+		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
+		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+
+		if (Elite::Distance(nextTargetPos, agentInfo.Position) < 2.f)
+		{
+			pSteering->LinearVelocity = Elite::ZeroVector2;
+			pBlackboard->ChangeData("houseLeaveLocationValid", false);
+		}
+
+		return Elite::BehaviorState::Success;
+	}
+
+	Elite::BehaviorState UseMedkit(Elite::Blackboard* pBlackboard)
+	{
+		InventoryManager* pInventoryManager{ nullptr };
+
+		if (pBlackboard->GetData("inventoryManager", pInventoryManager) == false || pInventoryManager == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		if (pInventoryManager->UseMedkit())
+		{
+			return Elite::BehaviorState::Success;
+		}
+		return Elite::BehaviorState::Failure;
+	}
 }
 
 //-----------------------------------------------------------------
@@ -210,7 +290,7 @@ namespace BT_Actions
 
 namespace BT_Conditions
 {
-	bool IsEnemyInPOV(Elite::Blackboard* pBlackboard)
+	bool IsEnemyInFOV(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
@@ -234,7 +314,7 @@ namespace BT_Conditions
 		return false;
 	}
 
-	bool IsHouseInPOV(Elite::Blackboard* pBlackboard)
+	bool IsHouseInFOV(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
 		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
@@ -248,11 +328,24 @@ namespace BT_Conditions
 			return false;
 		}
 
-		if (pHousesInFOV->size() > 0)
+		return pHousesInFOV->size() > 0;
+	}
+
+	bool IsLootInFOV(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
 		{
-			return true;
+			return false;
 		}
-		return false;
+		if (pBlackboard->GetData("entitiesInFOV", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		{
+			return false;
+		}
+
+		return pEntitiesInFOV->size() > 0;
 	}
 
 	bool DoIHaveGun(Elite::Blackboard* pBlackboard)
@@ -265,6 +358,18 @@ namespace BT_Conditions
 		}
 		
 		return pInventoryManager->HaveGun();
+	}
+
+	bool DoIHaveMedKit(Elite::Blackboard* pBlackboard)
+	{
+		InventoryManager* pInventoryManager{ nullptr };
+
+		if (pBlackboard->GetData("inventoryManager", pInventoryManager) == false || pInventoryManager == nullptr)
+		{
+			return false;
+		}
+
+		return pInventoryManager->HaveItem(eItemType::MEDKIT);
 	}
 
 	bool AgentInsideHouse(Elite::Blackboard* pBlackboard)

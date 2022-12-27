@@ -46,26 +46,53 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	pBlackboard->AddData("houseLeaveLocationValid", static_cast<bool>(false));
 
 	// Root behavior is the first behavior that is connected to the root node.
-	m_pBehaviorTree = new Elite::BehaviorTree(pBlackboard, new Elite::BehaviorSelector
+	m_pBehaviorTree = new Elite::BehaviorTree(pBlackboard,  new Elite::BehaviorGroup
 	(
+		// Start Group: execute all things regardless
 		{
-			new Elite::BehaviorSequence
-			(
-				{
-					new Elite::BehaviorConditional(&BT_Conditions::IsHouseInPOV),
-					new Elite::BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
-					new Elite::BehaviorAction(&BT_Actions::GoToFirstHouse)
-				}
-			),
-			new Elite::BehaviorAction(&BT_Actions::LootFOV),
-			new Elite::BehaviorSequence
-			(
-				{
-					new Elite::BehaviorConditional(&BT_Conditions::AgentInsideHouse),
-					new Elite::BehaviorAction(&BT_Actions::SpinAround)
-				}
-			),
-			new Elite::BehaviorAction(&BT_Actions::ChangeToWander)
+			// World Selector Root
+		new Elite::BehaviorSelector
+		(
+			{
+				new Elite::BehaviorSequence
+				(
+					{
+						new Elite::BehaviorConditional(&BT_Conditions::IsHouseInFOV),
+						new Elite::BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
+						new Elite::BehaviorAction(&BT_Actions::GoToFirstHouse)
+					}
+				),
+				new Elite::BehaviorSequence
+				(
+					{
+						new Elite::BehaviorConditional(&BT_Conditions::IsLootInFOV),
+						new Elite::BehaviorAction(&BT_Actions::LootFOV)
+					}
+				),
+				new Elite::BehaviorSequence
+				(
+					{
+						new Elite::BehaviorConditional(&BT_Conditions::AgentInsideHouse),
+						new Elite::BehaviorAction(&BT_Actions::GoOutsideOfHouse)
+					}
+				),
+				//new Elite::BehaviorAction(&BT_Actions::SpinAround),
+				new Elite::BehaviorAction(&BT_Actions::ChangeToWander)
+			}
+		),
+			// Inventory Selector Root
+		new Elite::BehaviorSelector
+		(
+			{
+				new Elite::BehaviorSequence
+				(
+					{
+						new Elite::BehaviorConditional(&BT_Conditions::DoIHaveMedKit),
+						new Elite::BehaviorAction(&BT_Actions::UseMedkit)
+					}
+				)
+			}
+		)
 		}
 	));
 }
