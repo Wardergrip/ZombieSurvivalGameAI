@@ -4,6 +4,7 @@
 
 #include "HelperFuncts.h"
 #include "Behaviors.h"
+#include "AgentProps.h"
 
 using namespace std;
 
@@ -30,15 +31,36 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	// -----------------------------------------------------------------------------------------
 
 	m_pSteeringOutputData = new SteeringPlugin_Output();
+	m_pAgentProps = new AgentProps();
+	m_pAgentProps->enemyDetectionRadius = 10.f;
+	m_pEntitiesInFOV = new std::vector<EntityInfo>();
+	m_pHousesInFOV = new std::vector<HouseInfo>();
 
 	// Initialise blackboard data
 	Elite::Blackboard* pBlackboard = new Elite::Blackboard();
-	pBlackboard->AddData("testName", "templated Data");
 	pBlackboard->AddData("interface", static_cast<IExamInterface*>(m_pInterface));
 	pBlackboard->AddData("steering", static_cast<SteeringPlugin_Output*>(m_pSteeringOutputData));
+	pBlackboard->AddData("agentProps",static_cast<AgentProps*>(m_pAgentProps));
+	pBlackboard->AddData("entitiesInFOV", static_cast<std::vector<EntityInfo>*>(m_pEntitiesInFOV));
+	pBlackboard->AddData("housesInFOV", static_cast<std::vector<HouseInfo>*>(m_pHousesInFOV));
 
 	// Root behavior is the first behavior that is connected to the root node.
-	m_pBehaviorTree = new Elite::BehaviorTree(pBlackboard, new Elite::BehaviorAction(&BT_Actions::ChangeToWander));
+	m_pBehaviorTree = new Elite::BehaviorTree(pBlackboard, new Elite::BehaviorSelector
+	(
+		{
+			new Elite::BehaviorSequence
+			(
+				{
+					new Elite::BehaviorConditional(&BT_Conditions::IsHouseInPOV),
+					new Elite::BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
+					new Elite::BehaviorAction(&BT_Actions::GoToFirstHouse)
+				}
+			),
+			new Elite::BehaviorAction(&BT_Actions::LootFOV),
+			new Elite::BehaviorAction(&BT_Actions::SpinAround),
+			new Elite::BehaviorAction(&BT_Actions::ChangeToWander)
+		}
+	));
 }
 
 //Called only once
@@ -54,6 +76,9 @@ void Plugin::DllShutdown()
 
 	SAFE_DELETE(m_pBehaviorTree);
 	SAFE_DELETE(m_pSteeringOutputData);
+	SAFE_DELETE(m_pAgentProps);
+	SAFE_DELETE(m_pEntitiesInFOV);
+	SAFE_DELETE(m_pHousesInFOV);
 
 	// No need to delete blackboard since behavior tree gains ownership
 	//SAFE_DELETE(m_pBlackboard);
@@ -76,7 +101,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 36;
+	params.Seed = 36; // 36 is demo seed
 }
 
 //Only Active in DEBUG Mode
@@ -84,6 +109,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 void Plugin::Update(float dt)
 {
 	// DEBUG ONLY
+
 #ifdef DEMO_INPUT
 	//Demo Event Code
 	//In the end your AI should be able to walk around without external input
@@ -150,6 +176,15 @@ void Plugin::Update(float dt)
 // F12 ON THIS "SteeringPlugin_Output" STRUCT TO VIEW FILE
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
+	if (!UpdateEntitiesInFOV())
+	{
+		std::cout << "Failed to update entities\n";
+	}
+	if (!UpdateHousesInFOV())
+	{
+		std::cout << "Failed to update houses\n";
+	}
+
 	SteeringPlugin_Output* pSteering{};
 	
 	m_pBehaviorTree->Update(dt);
@@ -211,19 +246,19 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	}
 
 	//Simple Seek Behaviour (towards Target)
-	steering.LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-	steering.LinearVelocity.Normalize(); //Normalize Desired Velocity
-	steering.LinearVelocity *= agentInfo.MaxLinearSpeed; //Rescale to Max Speed
+	pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+	pSteering->LinearVelocity.Normalize(); //Normalize Desired Velocity
+	pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed; //Rescale to Max Speed
 
 	if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
 	{
-		steering.LinearVelocity = Elite::ZeroVector2;
+		pSteering->LinearVelocity = Elite::ZeroVector2;
 	}
 
 	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
-	steering.AutoOrient = true; //Setting AutoOrient to TRue overrides the AngularVelocity
+	pSteering->AutoOrient = true; //Setting AutoOrient to TRue overrides the AngularVelocity
 
-	steering.RunMode = m_CanRun; //If RunMode is True > MaxLinSpd is increased for a limited time (till your stamina runs out)
+	pSteering->RunMode = m_CanRun; //If RunMode is True > MaxLinSpd is increased for a limited time (till your stamina runs out)
 
 	//SteeringPlugin_Output is works the exact same way a SteeringBehaviour output
 
@@ -241,6 +276,52 @@ void Plugin::Render(float dt) const
 {
 	//This Render function should only contain calls to Interface->Draw_... functions
 	m_pInterface->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
+}
+
+bool Plugin::UpdateHousesInFOV()
+{
+	vector<HouseInfo>* vHousesInFOV{nullptr};
+	if (m_pBehaviorTree->GetBlackboard()->GetData("housesInFOV", vHousesInFOV) == false || vHousesInFOV == nullptr)
+	{
+		return false;
+	}
+	vHousesInFOV->clear();
+	HouseInfo hi = {};
+	for (int i = 0;; ++i)
+	{
+		if (m_pInterface->Fov_GetHouseByIndex(i, hi))
+		{
+			vHousesInFOV->push_back(hi);
+			continue;
+		}
+
+		break;
+	}
+
+	return true;
+}
+
+bool Plugin::UpdateEntitiesInFOV()
+{
+	vector<EntityInfo>* vEntitiesInFOV{nullptr};
+	if (m_pBehaviorTree->GetBlackboard()->GetData("entitiesInFOV", vEntitiesInFOV) == false || vEntitiesInFOV == nullptr)
+	{
+		return false;
+	}
+	vEntitiesInFOV->clear();
+	EntityInfo ei = {};
+	for (int i = 0;; ++i)
+	{
+		if (m_pInterface->Fov_GetEntityByIndex(i, ei))
+		{
+			vEntitiesInFOV->push_back(ei);
+			continue;
+		}
+
+		break;
+	}
+	
+	return true;
 }
 
 vector<HouseInfo> Plugin::GetHousesInFOV() const

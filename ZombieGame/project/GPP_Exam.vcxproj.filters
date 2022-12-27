@@ -13,5 +13,6 @@
     <ClInclude Include="EDecisionMaking.h" />
     <ClInclude Include="EBlackboard.h" />
     <ClInclude Include="HelperFuncts.h" />
+    <ClInclude Include="AgentProps.h" />
   </ItemGroup>
 </Project>

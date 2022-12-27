@@ -8,6 +8,7 @@
 
 class IBaseInterface;
 class IExamInterface;
+struct AgentProps;
 
 class Plugin :public IExamPlugin
 {
@@ -28,8 +29,11 @@ public:
 private:
 	//Interface, used to request data from/perform actions with the AI Framework
 	IExamInterface* m_pInterface = nullptr;
-	std::vector<HouseInfo> GetHousesInFOV() const;
 	std::vector<EntityInfo> GetEntitiesInFOV() const;
+	std::vector<HouseInfo> GetHousesInFOV() const;
+
+	bool UpdateHousesInFOV();
+	bool UpdateEntitiesInFOV();
 
 	Elite::Vector2 m_Target = {};
 	bool m_CanRun = false; //Demo purpose
@@ -42,6 +46,9 @@ private:
 
 	Elite::BehaviorTree* m_pBehaviorTree{ nullptr };
 	SteeringPlugin_Output* m_pSteeringOutputData;
+	AgentProps* m_pAgentProps;
+	std::vector<EntityInfo>* m_pEntitiesInFOV;
+	std::vector<HouseInfo>* m_pHousesInFOV;
 };
 
 //ENTRY

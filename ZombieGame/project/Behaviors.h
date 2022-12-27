@@ -14,6 +14,7 @@
 #include "EBehaviorTree.h"
 #include "..\inc\EliteMath\EVector2.h"
 #include "HelperFuncts.h"
+#include "AgentProps.h"
 
 //-----------------------------------------------------------------
 // Behaviors
@@ -21,6 +22,34 @@
 
 namespace BT_Actions
 {
+	Elite::BehaviorState CheeseStrategyV1(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		SteeringPlugin_Output* pSteering{};
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+		auto target = Elite::Vector2{ 0,-100 };
+
+		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
+		//auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(Elite::Vector2(-100,0));
+
+		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
+		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+
+		return Elite::BehaviorState::Success;
+	}
+
 	Elite::BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
@@ -37,12 +66,7 @@ namespace BT_Actions
 
 		auto agentInfo = pInterface->Agent_GetInfo();
 #pragma region Calcs
-
-
-
-		
-
-		float wanderAngle{35.f};
+		float wanderAngle{ agentInfo.Orientation};
 		const constexpr float maxAngleChange{ 10.f };
 		const constexpr float offsetDistance{10.f};
 		const constexpr float radius{ 5.f };
@@ -54,8 +78,43 @@ namespace BT_Actions
 		Elite::Vector2 target{ circleCenter.x + (std::cosf(wanderAngle) * radius),circleCenter.y + (std::sinf(wanderAngle) * radius) };
 		Elite::Vector2 targetVector{ target - agentInfo.Position };
 #pragma endregion
-		//auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
-		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(Elite::Vector2(-100,0));
+		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
+		//auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(Elite::Vector2(-100,0));
+
+		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
+		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+
+		pInterface->Draw_Circle(circleCenter, radius, Elite::Vector3{0,1,0});
+		pInterface->Draw_Direction(agentInfo.Position, targetVector, offsetDistance, Elite::Vector3{0,1,0});
+
+		return Elite::BehaviorState::Success;
+	}
+
+	Elite::BehaviorState GoToFirstHouse(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		SteeringPlugin_Output* pSteering{};
+		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("housesInFOV", pHousesInFOV) == false || pHousesInFOV == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+		auto target = pHousesInFOV->begin()->Center;
+
+		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
 
 		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
 		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
@@ -63,70 +122,71 @@ namespace BT_Actions
 
 		return Elite::BehaviorState::Success;
 	}
-	/*
-	Elite::BehaviorState ChangeToSeekFood(Elite::Blackboard* pBlackboard)
+
+	Elite::BehaviorState LootFOV(Elite::Blackboard* pBlackboard)
 	{
-		AgarioAgent* pAgent;
+		IExamInterface* pInterface{ nullptr };
+		SteeringPlugin_Output* pSteering{};
+		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 
-		if (pBlackboard->GetData("Agent", pAgent) == false || pAgent == nullptr)
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("entitiesInFOV", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		
+		if (pEntitiesInFOV->empty())
 		{
 			return Elite::BehaviorState::Failure;
 		}
 
-		Elite::Vector2 targetPos;
-		if (pBlackboard->GetData("Target", targetPos) == false)
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+		auto target = pEntitiesInFOV->at(0).Location;
+
+		if ((target - pInterface->Agent_GetInfo().Position).MagnitudeSquared() < agentInfo.GrabRange * agentInfo.GrabRange)
 		{
-			return Elite::BehaviorState::Failure;
+			ItemInfo itemInfo;
+			pInterface->Item_Grab(pEntitiesInFOV->at(0), itemInfo);
+			return Elite::BehaviorState::Running;
 		}
 
-		DEBUGRENDERER2D->DrawCircle(targetPos, 2, {0,1,0}, DEBUGRENDERER2D->NextDepthSlice());
-		pAgent->SetToSeek(targetPos);
+		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
+
+		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
+		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
 
 		return Elite::BehaviorState::Success;
 	}
 
-	Elite::BehaviorState ChangeToFleeAgent(Elite::Blackboard* pBlackboard)
+	Elite::BehaviorState SpinAround(Elite::Blackboard* pBlackboard)
 	{
-		AgarioAgent* pAgent;
+		IExamInterface* pInterface{ nullptr };
+		SteeringPlugin_Output* pSteering{};
 
-		if (pBlackboard->GetData("Agent", pAgent) == false || pAgent == nullptr)
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
 
-		AgarioAgent* closestEnemy;
-		if (pBlackboard->GetData("AgentFleeTarget", closestEnemy) == false || closestEnemy == nullptr)
-		{
-			return Elite::BehaviorState::Failure;
-		}
-
-		pAgent->SetToFlee(closestEnemy->GetPosition());
-		DEBUGRENDERER2D->DrawCircle(closestEnemy->GetPosition(), closestEnemy->GetRadius() * 1.1f + 2, {1,0,0}, DEBUGRENDERER2D->NextDepthSlice());
+		pSteering->AutoOrient = false;
+		pSteering->LinearVelocity = Elite::ZeroVector2;
+		pSteering->AngularVelocity = pInterface->Agent_GetInfo().MaxAngularSpeed;
 
 		return Elite::BehaviorState::Success;
 	}
-
-	Elite::BehaviorState ChangeToSeekSmallAgent(Elite::Blackboard* pBlackboard)
-	{
-		AgarioAgent* pAgent;
-
-		if (pBlackboard->GetData("Agent", pAgent) == false || pAgent == nullptr)
-		{
-			return Elite::BehaviorState::Failure;
-		}
-
-		Elite::Vector2 targetPos;
-		if (pBlackboard->GetData("Target", targetPos) == false)
-		{
-			return Elite::BehaviorState::Failure;
-		}
-
-		pAgent->SetToSeek(targetPos);
-
-		DEBUGRENDERER2D->DrawCircle(targetPos, pAgent->GetRadius() + 2, {1,1,0}, DEBUGRENDERER2D->NextDepthSlice());
-
-		return Elite::BehaviorState::Success;
-	}*/
 }
 
 //-----------------------------------------------------------------
@@ -135,136 +195,84 @@ namespace BT_Actions
 
 namespace BT_Conditions
 {
-	/*bool IsFoodNearby(Elite::Blackboard* pBlackboard)
+	bool IsEnemyInPOV(Elite::Blackboard* pBlackboard)
 	{
-		AgarioAgent* pAgent{ nullptr };
-		std::vector<AgarioFood*>* pFoodVec{ nullptr };
+		IExamInterface* pInterface{ nullptr };
+		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 
-		if (pBlackboard->GetData("Agent", pAgent) == false || pAgent == nullptr)
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return false;
+		}
+		if (pBlackboard->GetData("entitiesInFOV", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
 		{
 			return false;
 		}
 
-		if (pBlackboard->GetData("FoodVec", pFoodVec) == false || pFoodVec == nullptr)
+		for (const auto& entity : *pEntitiesInFOV)
 		{
-			return false;
-		}
-
-		if (pFoodVec->empty())
-			return false;
-
-		const float searchRadius{ pAgent->GetRadius() + 20.f };
-		float closestDistSqr{ searchRadius * searchRadius };
-		AgarioFood* pClosestFood{ nullptr };
-		const Elite::Vector2 agentPos{ pAgent->GetPosition() };
-		DEBUGRENDERER2D->DrawCircle(agentPos, searchRadius, { 0,1,0 }, DEBUGRENDERER2D->NextDepthSlice());
-		for (const auto& pFood : *pFoodVec)
-		{
-			float distSqr = pFood->GetPosition().DistanceSquared(agentPos);
-
-			if (distSqr < closestDistSqr)
+			if (entity.Type == eEntityType::ENEMY)
 			{
-				closestDistSqr = distSqr;
-				pClosestFood = pFood;
+				return true;
 			}
 		}
+		return false;
+	}
 
-		if (pClosestFood != nullptr)
+	bool IsHouseInPOV(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
 		{
-			pBlackboard->ChangeData("Target", pClosestFood->GetPosition());
+			return false;
+		}
+		if (pBlackboard->GetData("housesInFOV", pHousesInFOV) == false || pHousesInFOV == nullptr)
+		{
+			return false;
+		}
+
+		if (pHousesInFOV->size() > 0)
+		{
 			return true;
 		}
 		return false;
 	}
 
-	bool IsLargeEnemyNearby(Elite::Blackboard* pBlackboard)
+	bool DoIHaveGun(Elite::Blackboard* pBlackboard)
 	{
-		AgarioAgent* pAgent{ nullptr };
-		std::vector<AgarioAgent*>* pAgentsVec{ nullptr };
+		IExamInterface* pInterface{ nullptr };
 
-		if (pBlackboard->GetData("Agent", pAgent) == false || pAgent == nullptr)
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
 		{
 			return false;
 		}
 
-		if (pBlackboard->GetData("AgentsVec", pAgentsVec) == false || pAgentsVec == nullptr)
+		ItemInfo itemInfo;
+		for (UINT i{ 0 }; i < pInterface->Inventory_GetCapacity(); ++i)
 		{
-			return false;
-		}
-
-		if (pAgentsVec->empty())
-			return false;
-
-		const float searchRadius{ pAgent->GetRadius() + 22.f };
-
-		float closestDistSqr{ searchRadius * searchRadius };
-		AgarioAgent* pClosestAgent{ nullptr };
-		const Elite::Vector2 agentPos{ pAgent->GetPosition() };
-		const float agentRadius{ pAgent->GetRadius() };
-		DEBUGRENDERER2D->DrawCircle(agentPos, searchRadius, { 1,0,0 }, DEBUGRENDERER2D->NextDepthSlice());
-		for (const auto& pEnemyAgent : *pAgentsVec)
-		{
-			if (pEnemyAgent == pAgent) continue;
-			const float distSqr = pEnemyAgent->GetPosition().DistanceSquared(agentPos);
-			if (distSqr < closestDistSqr && agentRadius < pEnemyAgent->GetRadius())
+			if (pInterface->Inventory_GetItem(i, itemInfo))
 			{
-				closestDistSqr = distSqr;
-				pClosestAgent = pEnemyAgent;
+				if (itemInfo.Type == eItemType::PISTOL || itemInfo.Type == eItemType::SHOTGUN)
+				{
+					return true;
+				}
 			}
-		}
-
-		if (pClosestAgent != nullptr)
-		{
-			pBlackboard->ChangeData("AgentFleeTarget", pClosestAgent);
-			return true;
 		}
 		return false;
 	}
 
-	bool IsSmallEnemyNearby(Elite::Blackboard* pBlackboard)
+	bool AgentInsideHouse(Elite::Blackboard* pBlackboard)
 	{
-		AgarioAgent* pAgent{ nullptr };
-		std::vector<AgarioAgent*>* pAgentsVec{ nullptr };
-
-		if (pBlackboard->GetData("Agent", pAgent) == false || pAgent == nullptr)
+		IExamInterface* pInterface{ nullptr };
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
 		{
 			return false;
 		}
 
-		if (pBlackboard->GetData("AgentsVec", pAgentsVec) == false || pAgentsVec == nullptr)
-		{
-			return false;
-		}
-
-		if (pAgentsVec->empty())
-			return false;
-
-		const float searchRadius{ pAgent->GetRadius() + 21.f };
-
-		float closestDistSqr{ searchRadius * searchRadius };
-		AgarioAgent* pClosestAgent{ nullptr };
-		const Elite::Vector2 agentPos{ pAgent->GetPosition() };
-		const float agentRadius{ pAgent->GetRadius() };
-		const float radiusMargin{ 1 };
-		DEBUGRENDERER2D->DrawCircle(agentPos, searchRadius, { 1,1,0 }, DEBUGRENDERER2D->NextDepthSlice());
-		for (const auto& pEnemyAgent : *pAgentsVec)
-		{
-			if (pEnemyAgent == pEnemyAgent) continue;
-			const float distSqr = pEnemyAgent->GetPosition().DistanceSquared(agentPos);
-			if (distSqr < closestDistSqr && agentRadius > (pEnemyAgent->GetRadius() + radiusMargin))
-			{
-				closestDistSqr = distSqr;
-				pClosestAgent = pEnemyAgent;
-			}
-		}
-
-		if (pClosestAgent != nullptr)
-		{
-			pBlackboard->ChangeData("Target", pClosestAgent->GetPosition());
-			return true;
-		}
-		return false;
-	}*/
+		return pInterface->Agent_GetInfo().IsInHouse;
+	}
 }
 
 
