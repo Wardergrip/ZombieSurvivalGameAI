@@ -149,12 +149,17 @@ namespace BT_Actions
 
 		auto agentInfo = pInterface->Agent_GetInfo();
 
+		if (pEntitiesInFOV->at(0).Type != eEntityType::ITEM)
+		{
+			return Elite::BehaviorState::Failure;
+		}
 		auto target = pEntitiesInFOV->at(0).Location;
 
 		if ((target - pInterface->Agent_GetInfo().Position).MagnitudeSquared() < agentInfo.GrabRange * agentInfo.GrabRange)
 		{
 			ItemInfo itemInfo;
 			pInterface->Item_Grab(pEntitiesInFOV->at(0), itemInfo);
+			pInterface->Inventory_AddItem(0, itemInfo);
 			return Elite::BehaviorState::Running;
 		}
 
