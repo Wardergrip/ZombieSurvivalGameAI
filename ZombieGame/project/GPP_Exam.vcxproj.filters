@@ -4,6 +4,7 @@
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="EBehaviorTree.cpp" />
+    <ClCompile Include="InventoryManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
@@ -13,6 +14,6 @@
     <ClInclude Include="EDecisionMaking.h" />
     <ClInclude Include="EBlackboard.h" />
     <ClInclude Include="HelperFuncts.h" />
-    <ClInclude Include="AgentProps.h" />
+    <ClInclude Include="InventoryManager.h" />
   </ItemGroup>
 </Project>

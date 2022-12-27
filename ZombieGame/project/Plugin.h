@@ -8,7 +8,7 @@
 
 class IBaseInterface;
 class IExamInterface;
-struct AgentProps;
+class InventoryManager;
 
 class Plugin :public IExamPlugin
 {
@@ -46,7 +46,7 @@ private:
 
 	Elite::BehaviorTree* m_pBehaviorTree{ nullptr };
 	SteeringPlugin_Output* m_pSteeringOutputData;
-	AgentProps* m_pAgentProps;
+	InventoryManager* m_pInventoryManager;
 	std::vector<EntityInfo>* m_pEntitiesInFOV;
 	std::vector<HouseInfo>* m_pHousesInFOV;
 };

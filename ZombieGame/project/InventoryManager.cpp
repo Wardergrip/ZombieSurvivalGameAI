@@ -1,0 +1,127 @@
+#include "stdafx.h"
+#include "InventoryManager.h"
+
+
+#include "HelperFuncts.h"
+
+InventoryManager::InventoryManager(IExamInterface* pInterface)
+	:m_pInterface{ pInterface } 
+{
+	m_Inventory.reserve(m_pInterface->Inventory_GetCapacity());
+	for (UINT i{ 0 }; i < m_Inventory.capacity(); ++i)
+	{
+		m_Inventory.push_back(eItemType::RANDOM_DROP);
+	}
+}
+
+void InventoryManager::DEBUG_PrintInv() const
+{
+	UINT i{ 0 };
+	for (auto item : m_Inventory)
+	{
+		std::cout << "SLOT [" << i << "]: ";
+		++i;
+		switch (item)
+		{
+		case eItemType::FOOD:
+			std::cout << "FOOD";
+			break;
+		case eItemType::GARBAGE:
+			std::cout << "GARBAGE";
+			break;
+		case eItemType::MEDKIT:
+			std::cout << "MEDKIT";
+			break;
+		case eItemType::PISTOL:
+			std::cout << "PISTOL";
+			break;
+		case eItemType::RANDOM_DROP:
+			std::cout << "RANDOM_DROP (Empty)";
+			break;
+		case eItemType::RANDOM_DROP_WITH_CHANCE:
+			std::cout << "RANDOM_DROP_WITH_CHANCE (Wtf)";
+			break;
+		case eItemType::SHOTGUN:
+			std::cout << "SHOTGUN";
+			break;
+		default:
+			break;
+		}
+		std::cout << '\n';
+	}
+}
+
+bool InventoryManager::HaveGun() const
+{
+	ItemInfo itemInfo;
+	for (UINT i{ 0 }; i < m_pInterface->Inventory_GetCapacity(); ++i)
+	{
+		if (m_pInterface->Inventory_GetItem(i, itemInfo))
+		{
+			if (itemInfo.Type == eItemType::PISTOL || itemInfo.Type == eItemType::SHOTGUN)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool InventoryManager::IsInventoryFull() const
+{
+	return GetFreeItemSlot() == invalid_inventory_slot;
+}
+
+UINT InventoryManager::GetFreeItemSlot() const
+{
+	ItemInfo itemInfo;
+	for (UINT i{ 0 }; i < m_pInterface->Inventory_GetCapacity(); ++i)
+	{
+		if (!m_pInterface->Inventory_GetItem(i, itemInfo))
+		{
+			return i;
+		}
+	}
+
+	return invalid_inventory_slot;
+}
+
+bool InventoryManager::GrabAndAddItem(EntityInfo entityInfo)
+{
+	if (entityInfo.Type != eEntityType::ITEM)
+	{
+		return false;
+	}
+	ItemInfo itemInfo;
+	m_pInterface->Item_GetInfo(entityInfo, itemInfo);
+	if (itemInfo.Type == eItemType::GARBAGE)
+	{
+		m_pInterface->Item_Destroy(entityInfo);
+		return true;
+	}
+	if (IsInventoryFull())
+	{
+		return false;
+	}
+
+	if (!m_pInterface->Item_Grab(entityInfo, itemInfo)) return false;
+	UINT slot = GetFreeItemSlot();
+	m_pInterface->Inventory_AddItem(slot, itemInfo);
+	m_Inventory[slot] = itemInfo.Type;
+	return true;
+}
+
+void InventoryManager::DeleteGarbage()
+{
+	ItemInfo itemInfo;
+	for (UINT i{ 0 }; i < m_pInterface->Inventory_GetCapacity(); ++i)
+	{
+		if (m_pInterface->Inventory_GetItem(i, itemInfo))
+		{
+			if (itemInfo.Type == eItemType::GARBAGE)
+			{
+				m_pInterface->Inventory_RemoveItem(i);
+			}
+		}
+	}
+}

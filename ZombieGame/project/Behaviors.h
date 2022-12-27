@@ -14,7 +14,7 @@
 #include "EBehaviorTree.h"
 #include "..\inc\EliteMath\EVector2.h"
 #include "HelperFuncts.h"
-#include "AgentProps.h"
+#include "InventoryManager.h"
 
 //-----------------------------------------------------------------
 // Behaviors
@@ -109,6 +109,10 @@ namespace BT_Actions
 		{
 			return Elite::BehaviorState::Failure;
 		}
+		if (pHousesInFOV->empty())
+		{
+			return Elite::BehaviorState::Failure;
+		}
 
 		auto agentInfo = pInterface->Agent_GetInfo();
 
@@ -128,7 +132,8 @@ namespace BT_Actions
 		IExamInterface* pInterface{ nullptr };
 		SteeringPlugin_Output* pSteering{};
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
-
+		InventoryManager* pInventoryManager{ nullptr };
+		
 		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
@@ -138,6 +143,10 @@ namespace BT_Actions
 			return Elite::BehaviorState::Failure;
 		}
 		if (pBlackboard->GetData("entitiesInFOV", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("inventoryManager", pInventoryManager) == false || pInventoryManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
@@ -157,10 +166,11 @@ namespace BT_Actions
 
 		if ((target - pInterface->Agent_GetInfo().Position).MagnitudeSquared() < agentInfo.GrabRange * agentInfo.GrabRange)
 		{
-			ItemInfo itemInfo;
-			pInterface->Item_Grab(pEntitiesInFOV->at(0), itemInfo);
-			pInterface->Inventory_AddItem(0, itemInfo);
-			return Elite::BehaviorState::Running;
+			if (pInventoryManager->GrabAndAddItem(pEntitiesInFOV->at(0)))
+			{
+				return Elite::BehaviorState::Running;
+			}
+			return Elite::BehaviorState::Failure;
 		}
 
 		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
@@ -185,7 +195,7 @@ namespace BT_Actions
 		{
 			return Elite::BehaviorState::Failure;
 		}
-
+		
 		pSteering->AutoOrient = false;
 		pSteering->LinearVelocity = Elite::ZeroVector2;
 		pSteering->AngularVelocity = pInterface->Agent_GetInfo().MaxAngularSpeed;
@@ -247,25 +257,14 @@ namespace BT_Conditions
 
 	bool DoIHaveGun(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* pInterface{ nullptr };
+		InventoryManager* pInventoryManager{ nullptr };
 
-		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		if (pBlackboard->GetData("inventoryManager", pInventoryManager) == false || pInventoryManager == nullptr)
 		{
 			return false;
 		}
-
-		ItemInfo itemInfo;
-		for (UINT i{ 0 }; i < pInterface->Inventory_GetCapacity(); ++i)
-		{
-			if (pInterface->Inventory_GetItem(i, itemInfo))
-			{
-				if (itemInfo.Type == eItemType::PISTOL || itemInfo.Type == eItemType::SHOTGUN)
-				{
-					return true;
-				}
-			}
-		}
-		return false;
+		
+		return pInventoryManager->HaveGun();
 	}
 
 	bool AgentInsideHouse(Elite::Blackboard* pBlackboard)
