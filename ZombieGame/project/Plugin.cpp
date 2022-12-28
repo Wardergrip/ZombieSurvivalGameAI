@@ -5,6 +5,7 @@
 #include "HelperFuncts.h"
 #include "Behaviors.h"
 #include "InventoryManager.h"
+#include "Timer.h"
 
 using namespace std;
 
@@ -35,6 +36,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pHousesInFOV = new std::vector<HouseInfo>();
 	m_pHousesChecked = new std::vector<HouseCheck>();
 	m_pInventoryManager = new InventoryManager(m_pInterface);
+	m_pLastDangerTimer = new Timer(5.f,false);
 
 	// Initialise blackboard data
 	Elite::Blackboard* pBlackboard = new Elite::Blackboard();
@@ -46,6 +48,8 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	pBlackboard->AddData("housesChecked", static_cast<std::vector<HouseCheck>*>(m_pHousesChecked));
 	pBlackboard->AddData("houseLeaveLocation", Elite::Vector2{ 0,0 });
 	pBlackboard->AddData("houseLeaveLocationValid", static_cast<bool>(false));
+	pBlackboard->AddData("lastDangerTimer", static_cast<Timer*>(m_pLastDangerTimer));
+	pBlackboard->AddData("oldHealth", 10.f);
 
 	using namespace Elite;
 	// Root behavior is the first behavior that is connected to the root node.
@@ -60,11 +64,36 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 				new BehaviorSequence
 				(
 					{
+						// Is enemy in FOV or are we in danger? (Via Timer)
+						new BehaviorConditional(&BT_Conditions::IsInDanger),
+						// If so
+						new BehaviorSelector
+						(
+							{
+								// Kite and shoot if we have a gun
+								new BehaviorSequence
+								(
+									{
+										new BehaviorConditional(&BT_Conditions::DoIHaveGun),
+										new BehaviorAction(&BT_Actions::KiteAndShoot)
+									}
+								),
+								// Run otherwise
+								new BehaviorAction(&BT_Actions::RunFromDanger)
+							}
+						)
+					}
+				),
+				// Go to unlooted houses, GoToFirstHouse saves location before we enter
+				new BehaviorSequence
+				(
+					{
 						new BehaviorConditional(&BT_Conditions::IsHouseInFOVUnlooted),
 						new BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
 						new BehaviorAction(&BT_Actions::GoToFirstHouse)
 					}
 				),
+				// Take all loot in case we see it, unless we are full. Insta delete garbage
 				new BehaviorSequence
 				(
 					{
@@ -73,6 +102,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						new BehaviorAction(&BT_Actions::LootFOV)
 					}
 				),
+				// If we're inside the house, search it fully, if we are done go outside
 				new BehaviorSequence
 				(
 					{
@@ -86,6 +116,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						)
 					}
 				),
+				// Nothing left to do, explore!
 				new BehaviorAction(&BT_Actions::ChangeToWander)
 			}
 		),
@@ -93,6 +124,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 		new BehaviorSelector
 		(
 			{
+				// Use medkits if we have one, UseMedkit only works effeciently
 				new BehaviorSequence
 				(
 					{
@@ -100,6 +132,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						new BehaviorAction(&BT_Actions::UseMedkit)
 					}
 				),
+				// Use food if we have one, UseFood only works effeciently
 				new Elite::BehaviorSequence
 				(
 					{
@@ -235,6 +268,25 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	{
 		std::cout << "Failed to update houses\n";
 	}
+	{
+		float oldHealth{};
+		if (m_pBehaviorTree->GetBlackboard()->GetData("oldHealth", oldHealth))
+		{
+			float currentHealth{ m_pInterface->Agent_GetInfo().Health };
+			if (oldHealth > currentHealth)
+			{
+				m_pLastDangerTimer->Enable();
+				m_pLastDangerTimer->ResetTimer();
+				m_pBehaviorTree->GetBlackboard()->ChangeData("oldHealth", currentHealth);
+			}
+		}
+		else
+		{
+			std::cout << "Failed to update oldHealth\n";
+		}
+	}
+
+	m_pLastDangerTimer->Update(dt);
 
 	SteeringPlugin_Output* pSteering{};
 	

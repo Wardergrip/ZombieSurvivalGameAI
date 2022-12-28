@@ -11,6 +11,7 @@
 class IBaseInterface;
 class IExamInterface;
 class InventoryManager;
+struct Timer;
 
 
 class Plugin :public IExamPlugin
@@ -53,6 +54,7 @@ private:
 	std::vector<EntityInfo>* m_pEntitiesInFOV;
 	std::vector<HouseInfo>* m_pHousesInFOV;
 	std::vector<HouseCheck>* m_pHousesChecked;
+	Timer* m_pLastDangerTimer;
 };
 
 //ENTRY

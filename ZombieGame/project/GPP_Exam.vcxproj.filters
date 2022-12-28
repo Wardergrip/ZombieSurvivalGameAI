@@ -16,5 +16,6 @@
     <ClInclude Include="HelperFuncts.h" />
     <ClInclude Include="InventoryManager.h" />
     <ClInclude Include="HouseCheck.h" />
+    <ClInclude Include="Timer.h" />
   </ItemGroup>
 </Project>

@@ -203,6 +203,33 @@ bool InventoryManager::UseFood()
 	return false;
 }
 
+bool InventoryManager::UseGun()
+{
+	if (!HaveGun())
+	{
+		return false;
+	}
+
+	auto shotgunIterator = std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::SHOTGUN);
+	auto pistolIterator = std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::PISTOL);
+	auto gunIterator = shotgunIterator;
+
+	// Did not find a shotgun
+	if (shotgunIterator == m_Inventory.end())
+	{
+		// Did not find a pistol
+		if (pistolIterator == m_Inventory.end())
+		{
+			throw "Something went terribly wrong";
+		}
+		gunIterator = pistolIterator;
+	}
+	UINT gunIdx{ static_cast<UINT>(std::distance(m_Inventory.begin(),gunIterator)) };
+	m_pInterface->Inventory_UseItem(gunIdx);
+
+	return true;
+}
+
 void InventoryManager::DeleteGarbage()
 {
 	ItemInfo itemInfo;
