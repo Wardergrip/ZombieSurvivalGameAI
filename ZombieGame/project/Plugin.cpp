@@ -97,6 +97,13 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						new Elite::BehaviorConditional(&BT_Conditions::DoIHaveMedKit),
 						new Elite::BehaviorAction(&BT_Actions::UseMedkit)
 					}
+				),
+				new Elite::BehaviorSequence
+				(
+					{
+						new Elite::BehaviorConditional(&BT_Conditions::DoIHaveFood),
+						new Elite::BehaviorAction(&BT_Actions::UseFood)
+					}
 				)
 			}
 		)

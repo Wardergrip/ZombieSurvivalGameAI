@@ -145,14 +145,50 @@ bool InventoryManager::UseMedkit()
 	ItemInfo itemInfo{};
 	if (m_pInterface->Inventory_GetItem(idx, itemInfo))
 	{
-		const int medkitHp{ m_pInterface->Medkit_GetHealth(itemInfo) };
+		int medkitHp{ m_pInterface->Medkit_GetHealth(itemInfo) };
 		// Is the difference in max HP and current HP bigger or equal to medkitHP?
 		// This is to circumvent overhealing.
 		if (maxHp - agentHP >= medkitHp)
 		{
 			m_pInterface->Inventory_UseItem(idx);
+			// After using we need to update the value of the medkit
+			medkitHp = m_pInterface->Medkit_GetHealth(itemInfo);
 		}
 		if (medkitHp <= 0)
+		{
+			m_pInterface->Inventory_RemoveItem(idx);
+			m_Inventory.at(idx) = eItemType::RANDOM_DROP;
+		}
+		return true;
+	}
+
+	return false;
+}
+
+bool InventoryManager::UseFood()
+{
+	if (!HaveItem(eItemType::FOOD))
+	{
+		return false;
+	}
+
+	const float agentEnergy{ m_pInterface->Agent_GetInfo().Energy };
+	const constexpr float thresholdEnergy{ 9 }; // Will not consider using food if above this energy
+	const constexpr float maxEnergy{ 10 };
+	if (agentEnergy > thresholdEnergy) return false;
+
+	UINT idx = std::distance(m_Inventory.begin(), std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::FOOD));
+	ItemInfo itemInfo{};
+	if (m_pInterface->Inventory_GetItem(idx, itemInfo))
+	{
+		int foodEnergy{ m_pInterface->Food_GetEnergy(itemInfo) };
+		if (maxEnergy - agentEnergy >= foodEnergy)
+		{
+			m_pInterface->Inventory_UseItem(idx);
+			// After using we need to update the value of the food
+			foodEnergy = m_pInterface->Food_GetEnergy(itemInfo);
+		}
+		if (foodEnergy <= 0)
 		{
 			m_pInterface->Inventory_RemoveItem(idx);
 			m_Inventory.at(idx) = eItemType::RANDOM_DROP;

@@ -28,6 +28,7 @@ public:
 
 	bool GrabAndAddItem(EntityInfo entityInfo);
 	bool UseMedkit();
+	bool UseFood();
 	void DeleteGarbage();
 private:
 	IExamInterface* m_pInterface = nullptr;

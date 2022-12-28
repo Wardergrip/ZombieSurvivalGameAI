@@ -284,6 +284,22 @@ namespace BT_Actions
 		return Elite::BehaviorState::Failure;
 	}
 
+	Elite::BehaviorState UseFood(Elite::Blackboard* pBlackboard)
+	{
+		InventoryManager* pInventoryManager{ nullptr };
+
+		if (pBlackboard->GetData("inventoryManager", pInventoryManager) == false || pInventoryManager == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		if (pInventoryManager->UseFood())
+		{
+			return Elite::BehaviorState::Success;
+		}
+		return Elite::BehaviorState::Failure;
+	}
+
 	Elite::BehaviorState GoAroundHouse(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
@@ -420,6 +436,18 @@ namespace BT_Conditions
 		}
 
 		return pInventoryManager->HaveItem(eItemType::MEDKIT);
+	}
+
+	bool DoIHaveFood(Elite::Blackboard* pBlackboard)
+	{
+		InventoryManager* pInventoryManager{ nullptr };
+
+		if (pBlackboard->GetData("inventoryManager", pInventoryManager) == false || pInventoryManager == nullptr)
+		{
+			return false;
+		}
+
+		return pInventoryManager->HaveItem(eItemType::FOOD);
 	}
 
 	bool AgentInsideHouse(Elite::Blackboard* pBlackboard)
