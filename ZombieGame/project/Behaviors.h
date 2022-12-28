@@ -15,6 +15,7 @@
 #include "..\inc\EliteMath\EVector2.h"
 #include "HelperFuncts.h"
 #include "InventoryManager.h"
+#include "HouseCheck.h"
 
 //-----------------------------------------------------------------
 // Behaviors
@@ -281,6 +282,55 @@ namespace BT_Actions
 			return Elite::BehaviorState::Success;
 		}
 		return Elite::BehaviorState::Failure;
+	}
+
+	Elite::BehaviorState GoAroundHouse(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		SteeringPlugin_Output* pSteering{ nullptr };
+		std::vector<HouseCheck>* pHousesChecked{ nullptr };
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("housesChecked", pHousesChecked) == false || pHousesChecked == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+		Elite::Vector2 target;
+		bool found{ false };
+		for (auto& house : *pHousesChecked)
+		{
+			if (house.IsDone()) continue;
+			house.UpdateCheckedCorners(agentInfo.Position);
+			if (house.IsDone()) continue;
+			target = house.GetNextCorner();
+			found = true;
+			break;
+		}
+		if (found == false)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
+
+		pInterface->Draw_Circle(target, 2.f, Elite::Vector3{ 0,1,1 });
+
+		pSteering->AutoOrient = true;
+		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
+		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+
+		return Elite::BehaviorState::Success;
 	}
 }
 

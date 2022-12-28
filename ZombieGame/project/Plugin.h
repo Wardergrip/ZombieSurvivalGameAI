@@ -6,9 +6,12 @@
 #include "EBehaviorTree.h"
 #include "EBlackboard.h"
 
+#include "HouseCheck.h"
+
 class IBaseInterface;
 class IExamInterface;
 class InventoryManager;
+
 
 class Plugin :public IExamPlugin
 {
@@ -49,6 +52,7 @@ private:
 	InventoryManager* m_pInventoryManager;
 	std::vector<EntityInfo>* m_pEntitiesInFOV;
 	std::vector<HouseInfo>* m_pHousesInFOV;
+	std::vector<HouseCheck>* m_pHousesChecked;
 };
 
 //ENTRY

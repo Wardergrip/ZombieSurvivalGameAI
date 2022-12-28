@@ -187,6 +187,7 @@
     <ClInclude Include="EBlackboard.h" />
     <ClInclude Include="EDecisionMaking.h" />
     <ClInclude Include="HelperFuncts.h" />
+    <ClInclude Include="HouseCheck.h" />
     <ClInclude Include="InventoryManager.h" />
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="stdafx.h" />

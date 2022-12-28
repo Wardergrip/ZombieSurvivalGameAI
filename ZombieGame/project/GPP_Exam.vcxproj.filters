@@ -15,5 +15,6 @@
     <ClInclude Include="EBlackboard.h" />
     <ClInclude Include="HelperFuncts.h" />
     <ClInclude Include="InventoryManager.h" />
+    <ClInclude Include="HouseCheck.h" />
   </ItemGroup>
 </Project>

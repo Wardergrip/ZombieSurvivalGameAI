@@ -33,6 +33,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pSteeringOutputData = new SteeringPlugin_Output();
 	m_pEntitiesInFOV = new std::vector<EntityInfo>();
 	m_pHousesInFOV = new std::vector<HouseInfo>();
+	m_pHousesChecked = new std::vector<HouseCheck>();
 	m_pInventoryManager = new InventoryManager(m_pInterface);
 
 	// Initialise blackboard data
@@ -42,6 +43,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	pBlackboard->AddData("inventoryManager", static_cast<InventoryManager*>(m_pInventoryManager));
 	pBlackboard->AddData("entitiesInFOV", static_cast<std::vector<EntityInfo>*>(m_pEntitiesInFOV));
 	pBlackboard->AddData("housesInFOV", static_cast<std::vector<HouseInfo>*>(m_pHousesInFOV));
+	pBlackboard->AddData("housesChecked", static_cast<std::vector<HouseCheck>*>(m_pHousesChecked));
 	pBlackboard->AddData("houseLeaveLocation", Elite::Vector2{ 0,0 });
 	pBlackboard->AddData("houseLeaveLocationValid", static_cast<bool>(false));
 
@@ -73,10 +75,15 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 				(
 					{
 						new Elite::BehaviorConditional(&BT_Conditions::AgentInsideHouse),
-						new Elite::BehaviorAction(&BT_Actions::GoOutsideOfHouse)
+						new Elite::BehaviorSelector
+						(
+							{
+								new Elite::BehaviorAction(&BT_Actions::GoAroundHouse),
+								new Elite::BehaviorAction(&BT_Actions::GoOutsideOfHouse)
+							}
+						)
 					}
 				),
-				//new Elite::BehaviorAction(&BT_Actions::SpinAround),
 				new Elite::BehaviorAction(&BT_Actions::ChangeToWander)
 			}
 		),
@@ -113,6 +120,7 @@ void Plugin::DllShutdown()
 	SAFE_DELETE(m_pInventoryManager);
 	SAFE_DELETE(m_pEntitiesInFOV);
 	SAFE_DELETE(m_pHousesInFOV);
+	SAFE_DELETE(m_pHousesChecked);
 
 	// No need to delete blackboard since behavior tree gains ownership
 	//SAFE_DELETE(m_pBlackboard);
@@ -326,6 +334,19 @@ bool Plugin::UpdateHousesInFOV()
 		if (m_pInterface->Fov_GetHouseByIndex(i, hi))
 		{
 			vHousesInFOV->push_back(hi);
+			bool found{ false };
+			for (const auto& houseCheck : *m_pHousesChecked)
+			{
+				if (houseCheck.Center == hi.Center)
+				{
+					found = true;
+					break;
+				}
+			}
+			if (found == false)
+			{
+				m_pHousesChecked->emplace_back(HouseCheck{hi});
+			}
 			continue;
 		}
 
