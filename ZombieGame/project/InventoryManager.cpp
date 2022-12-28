@@ -87,7 +87,11 @@ bool InventoryManager::HaveItem(eItemType itemType) const
 
 bool InventoryManager::IsInventoryFull() const
 {
-	return GetFreeItemSlot() == invalid_inventory_slot;
+	return std::all_of(m_Inventory.begin(), m_Inventory.end(), [](eItemType itemType)
+		{
+			return itemType != eItemType::RANDOM_DROP;
+		}
+	);
 }
 
 UINT InventoryManager::GetFreeItemSlot() const
@@ -209,6 +213,7 @@ void InventoryManager::DeleteGarbage()
 			if (itemInfo.Type == eItemType::GARBAGE)
 			{
 				m_pInterface->Inventory_RemoveItem(i);
+				m_Inventory.at(i) = eItemType::RANDOM_DROP;
 			}
 		}
 	}

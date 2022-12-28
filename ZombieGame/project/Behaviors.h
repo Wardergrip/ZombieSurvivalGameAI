@@ -300,7 +300,7 @@ namespace BT_Actions
 		return Elite::BehaviorState::Failure;
 	}
 
-	Elite::BehaviorState GoAroundHouse(Elite::Blackboard* pBlackboard)
+	Elite::BehaviorState SearchHouse(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
 		SteeringPlugin_Output* pSteering{ nullptr };
@@ -397,6 +397,41 @@ namespace BT_Conditions
 		return pHousesInFOV->size() > 0;
 	}
 
+	bool IsHouseInFOVUnlooted(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
+		std::vector<HouseCheck>* pHousesChecked{ nullptr };
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return false;
+		}
+		if (pBlackboard->GetData("housesInFOV", pHousesInFOV) == false || pHousesInFOV == nullptr)
+		{
+			return false;
+		}
+		if (pBlackboard->GetData("housesChecked", pHousesChecked) == false || pHousesChecked == nullptr)
+		{
+			return false;
+		}
+		if (!IsHouseInFOV(pBlackboard))
+		{
+			return false;
+		}
+
+		for (const auto& houseFOV : *pHousesInFOV)
+		{
+			for (const auto& houseCheck : *pHousesChecked)
+			{
+				if (houseFOV.Center == houseCheck.Center)
+				{
+					return !houseCheck.IsDone();
+				}
+			}
+		}
+	}
+
 	bool IsLootInFOV(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
@@ -412,6 +447,18 @@ namespace BT_Conditions
 		}
 
 		return pEntitiesInFOV->size() > 0;
+	}
+
+	bool IsInventoryFull(Elite::Blackboard* pBlackboard)
+	{
+		InventoryManager* pInventoryManager{ nullptr };
+
+		if (pBlackboard->GetData("inventoryManager", pInventoryManager) == false || pInventoryManager == nullptr)
+		{
+			return false;
+		}
+
+		return pInventoryManager->IsInventoryFull();
 	}
 
 	bool DoIHaveGun(Elite::Blackboard* pBlackboard)

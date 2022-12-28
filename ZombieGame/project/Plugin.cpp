@@ -47,62 +47,64 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	pBlackboard->AddData("houseLeaveLocation", Elite::Vector2{ 0,0 });
 	pBlackboard->AddData("houseLeaveLocationValid", static_cast<bool>(false));
 
+	using namespace Elite;
 	// Root behavior is the first behavior that is connected to the root node.
-	m_pBehaviorTree = new Elite::BehaviorTree(pBlackboard,  new Elite::BehaviorGroup
+	m_pBehaviorTree = new BehaviorTree(pBlackboard,  new BehaviorGroup
 	(
 		// Start Group: execute all things regardless
 		{
 			// World Selector Root
-		new Elite::BehaviorSelector
+		new BehaviorSelector
 		(
 			{
-				new Elite::BehaviorSequence
+				new BehaviorSequence
 				(
 					{
-						new Elite::BehaviorConditional(&BT_Conditions::IsHouseInFOV),
-						new Elite::BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
-						new Elite::BehaviorAction(&BT_Actions::GoToFirstHouse)
+						new BehaviorConditional(&BT_Conditions::IsHouseInFOVUnlooted),
+						new BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
+						new BehaviorAction(&BT_Actions::GoToFirstHouse)
 					}
 				),
-				new Elite::BehaviorSequence
+				new BehaviorSequence
 				(
 					{
-						new Elite::BehaviorConditional(&BT_Conditions::IsLootInFOV),
-						new Elite::BehaviorAction(&BT_Actions::LootFOV)
+						new BehaviorInvertConditional(&BT_Conditions::IsInventoryFull),
+						new BehaviorConditional(&BT_Conditions::IsLootInFOV),
+						new BehaviorAction(&BT_Actions::LootFOV)
 					}
 				),
-				new Elite::BehaviorSequence
+				new BehaviorSequence
 				(
 					{
-						new Elite::BehaviorConditional(&BT_Conditions::AgentInsideHouse),
-						new Elite::BehaviorSelector
+						new BehaviorConditional(&BT_Conditions::AgentInsideHouse),
+						new BehaviorSelector
 						(
 							{
-								new Elite::BehaviorAction(&BT_Actions::GoAroundHouse),
-								new Elite::BehaviorAction(&BT_Actions::GoOutsideOfHouse)
+								new BehaviorAction(&BT_Actions::SearchHouse),
+								new BehaviorAction(&BT_Actions::GoOutsideOfHouse)
 							}
 						)
 					}
 				),
-				new Elite::BehaviorAction(&BT_Actions::ChangeToWander)
+				new BehaviorAction(&BT_Actions::ChangeToWander)
 			}
 		),
 			// Inventory Selector Root
-		new Elite::BehaviorSelector
+		new BehaviorSelector
 		(
 			{
-				new Elite::BehaviorSequence
+				new BehaviorSequence
 				(
 					{
-						new Elite::BehaviorConditional(&BT_Conditions::DoIHaveMedKit),
-						new Elite::BehaviorAction(&BT_Actions::UseMedkit)
+						new BehaviorConditional(&BT_Conditions::DoIHaveMedKit),
+						new BehaviorAction(&BT_Actions::UseMedkit)
 					}
 				),
 				new Elite::BehaviorSequence
 				(
 					{
-						new Elite::BehaviorConditional(&BT_Conditions::DoIHaveFood),
-						new Elite::BehaviorAction(&BT_Actions::UseFood)
+						new BehaviorConditional(&BT_Conditions::DoIHaveFood),
+						new BehaviorAction(&BT_Actions::UseFood)
 					}
 				)
 			}
