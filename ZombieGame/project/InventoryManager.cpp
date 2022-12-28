@@ -136,19 +136,31 @@ bool InventoryManager::UseMedkit()
 		return false;
 	}
 
+	const float agentHP{ m_pInterface->Agent_GetInfo().Health };
+	const constexpr float thresholdHp{ 9 }; // Will not consider using medkits if above this
+	const constexpr float maxHp{ 10 };
+	if (agentHP > thresholdHp) return false;
+
 	UINT idx = std::distance(m_Inventory.begin(), std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::MEDKIT));
-	m_pInterface->Inventory_UseItem(idx);
 	ItemInfo itemInfo{};
 	if (m_pInterface->Inventory_GetItem(idx, itemInfo))
 	{
-		if (m_pInterface->Medkit_GetHealth(itemInfo) <= 0)
+		const int medkitHp{ m_pInterface->Medkit_GetHealth(itemInfo) };
+		// Is the difference in max HP and current HP bigger or equal to medkitHP?
+		// This is to circumvent overhealing.
+		if (maxHp - agentHP >= medkitHp)
+		{
+			m_pInterface->Inventory_UseItem(idx);
+		}
+		if (medkitHp <= 0)
 		{
 			m_pInterface->Inventory_RemoveItem(idx);
 			m_Inventory.at(idx) = eItemType::RANDOM_DROP;
 		}
+		return true;
 	}
 
-	return true;
+	return false;
 }
 
 void InventoryManager::DeleteGarbage()
