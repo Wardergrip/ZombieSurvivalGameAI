@@ -79,7 +79,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 									}
 								),
 								// Run otherwise
-								new BehaviorAction(&BT_Actions::RunFromDanger)
+								new BehaviorAction(&BT_Actions::RunFromEnemy)
 							}
 						)
 					}
@@ -185,7 +185,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 36; // 36 is demo seed
+	params.Seed = 0; // 36 is demo seed
 }
 
 //Only Active in DEBUG Mode

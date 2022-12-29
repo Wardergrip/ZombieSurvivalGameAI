@@ -83,6 +83,8 @@ namespace BT_Actions
 		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
 		//auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(Elite::Vector2(-100,0));
 
+		pSteering->AutoOrient = true;
+
 		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
 		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
 		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
@@ -405,11 +407,12 @@ namespace BT_Actions
 			}
 		}
 
-		// If we're oriented to the closest enemy, shoot it
-		const constexpr float angleEps{ 0.1f };
+		const constexpr float angleEps{ 0.05f };
 		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
-		if ((agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleEps)
+		// Check if we're oriented to the closest enemy
+		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleEps)
 		{
+			// If we're oriented to the closest enemy, shoot it
 			if (pInventoryManager->UseGun())
 			{
 				return Elite::BehaviorState::Success;
@@ -426,9 +429,88 @@ namespace BT_Actions
 		return Elite::BehaviorState::Success;
 	}
 
-	Elite::BehaviorState RunFromDanger(Elite::Blackboard* pBlackboard)
+	Elite::BehaviorState RunFromEnemy(Elite::Blackboard* pBlackboard)
 	{
-		return Elite::BehaviorState::Failure;
+		IExamInterface* pInterface{ nullptr };
+		SteeringPlugin_Output* pSteering{ nullptr };
+		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("entitiesInFOV", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+		pSteering->AutoOrient = false;
+
+		bool atleastOneEnemyinFOV{ false };
+
+		std::vector<int> enemyIdxs{};
+		for (int i{ 0 }; i < pEntitiesInFOV->size(); ++i)
+		{
+			if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
+			{
+				atleastOneEnemyinFOV = true;
+				enemyIdxs.push_back(i);
+			}
+		}
+		if (!atleastOneEnemyinFOV)
+		{
+			pSteering->AngularVelocity = agentInfo.MaxAngularSpeed;
+			return Elite::BehaviorState::Running;
+		}
+
+		EntityInfo closestEnemy{};
+		closestEnemy.Location.x = 10000.f;
+		for (int enemyIdx : enemyIdxs)
+		{
+			if (agentInfo.Position.Distance(pEntitiesInFOV->at(enemyIdx).Location) < agentInfo.Position.Distance(closestEnemy.Location))
+			{
+				closestEnemy = pEntitiesInFOV->at(enemyIdx);
+			}
+		}
+
+		const constexpr float angleEps{ 0.05f };
+		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
+		// Check if we're oriented to the closest enemy
+		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleEps)
+		{
+			// If so, just move backwards
+			auto target = agentInfo.Position - (desiredDirection.GetNormalized() * 10);
+
+			auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
+
+			pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+			pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
+			pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+			return Elite::BehaviorState::Success;
+		}
+
+		// Else, face towards closest enemy
+		desiredDirection.Normalize();
+		const float agentRot{ agentInfo.Orientation + 0.5f * static_cast<float>(M_PI) };
+		Elite::Vector2 agentDirection{ std::cosf(agentRot),std::sinf(agentRot) };
+		pSteering->AngularVelocity = (desiredDirection.Dot(agentDirection)) * agentInfo.MaxAngularSpeed;
+
+		// And move backwards
+		auto target = agentInfo.Position - (desiredDirection.GetNormalized() * 2.f);
+
+		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
+
+		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
+		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+
+		return Elite::BehaviorState::Success;
 	}
 	
 }
@@ -448,13 +530,14 @@ namespace BT_Conditions
 		{
 			return false;
 		}
-		if (pBlackboard->GetData("lastDangerTimer", pLastDangerTimer) || pLastDangerTimer == nullptr)
+		if (pBlackboard->GetData("lastDangerTimer", pLastDangerTimer) == false || pLastDangerTimer == nullptr)
 		{
 			return false;
 		}
-		for (const auto& entity : *pEntitiesInFOV)
+
+		for (int i{0}; i < pEntitiesInFOV->size(); ++i)
 		{
-			if (entity.Type == eEntityType::ENEMY)
+			if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
 			{
 				pLastDangerTimer->ResetTimer();
 				pLastDangerTimer->Enable();

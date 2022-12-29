@@ -53,36 +53,29 @@ void InventoryManager::DEBUG_PrintInv() const
 
 bool InventoryManager::HaveGun() const
 {
-	ItemInfo itemInfo;
-	for (UINT i{ 0 }; i < m_pInterface->Inventory_GetCapacity(); ++i)
+	auto shotgunIterator = std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::SHOTGUN);
+	auto pistolIterator = std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::PISTOL);
+
+	// Did not find a shotgun
+	if (shotgunIterator == m_Inventory.end())
 	{
-		if (m_pInterface->Inventory_GetItem(i, itemInfo))
+		// Did not find a pistol
+		if (pistolIterator == m_Inventory.end())
 		{
-			if (itemInfo.Type == eItemType::PISTOL || itemInfo.Type == eItemType::SHOTGUN)
-			{
-				return true;
-			}
+			return false;
 		}
 	}
-	return false;
+	return true;
 }
 
 bool InventoryManager::HaveItem(eItemType itemType) const
 {
-	ItemInfo itemInfo;
-	for (UINT i{ 0 }; i < m_pInterface->Inventory_GetCapacity(); ++i)
+	auto iterator = std::find(m_Inventory.begin(), m_Inventory.end(), itemType);
+	if (iterator == m_Inventory.end())
 	{
-		if (m_Inventory.at(i) == eItemType::RANDOM_DROP) continue;
-
-		if (m_pInterface->Inventory_GetItem(i, itemInfo))
-		{
-			if (itemInfo.Type == itemType)
-			{
-				return true;
-			}
-		}
+		return false;
 	}
-	return false;
+	return true;
 }
 
 bool InventoryManager::IsInventoryFull() const
@@ -226,6 +219,16 @@ bool InventoryManager::UseGun()
 	}
 	UINT gunIdx{ static_cast<UINT>(std::distance(m_Inventory.begin(),gunIterator)) };
 	m_pInterface->Inventory_UseItem(gunIdx);
+	ItemInfo itemInfo{};
+	if (m_pInterface->Inventory_GetItem(gunIdx, itemInfo))
+	{
+		if (m_pInterface->Weapon_GetAmmo(itemInfo) <= 0)
+		{
+			m_pInterface->Inventory_RemoveItem(gunIdx);
+			m_Inventory.at(gunIdx) = eItemType::RANDOM_DROP;
+		}
+	}
+	else throw "Something went terribly wrong";
 
 	return true;
 }
