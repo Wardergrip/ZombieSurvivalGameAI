@@ -11,6 +11,7 @@
 class IBaseInterface;
 class IExamInterface;
 class InventoryManager;
+class SteeringManager;
 struct Timer;
 
 
@@ -51,6 +52,7 @@ private:
 	Elite::BehaviorTree* m_pBehaviorTree{ nullptr };
 	SteeringPlugin_Output* m_pSteeringOutputData;
 	InventoryManager* m_pInventoryManager;
+	SteeringManager* m_pSteeringManager;
 	std::vector<EntityInfo>* m_pEntitiesInFOV;
 	std::vector<HouseInfo>* m_pHousesInFOV;
 	std::vector<HouseCheck>* m_pHousesChecked;

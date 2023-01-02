@@ -5,6 +5,7 @@
 #include "HelperFuncts.h"
 #include "Behaviors.h"
 #include "InventoryManager.h"
+#include "SteeringManager.h"
 #include "Timer.h"
 
 using namespace std;
@@ -36,6 +37,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pHousesInFOV = new std::vector<HouseInfo>();
 	m_pHousesChecked = new std::vector<HouseCheck>();
 	m_pInventoryManager = new InventoryManager(m_pInterface);
+	m_pSteeringManager = new SteeringManager(m_pInterface, m_pSteeringOutputData);
 	m_pLastDangerTimer = new Timer(5.f,false);
 
 	// Initialise blackboard data
@@ -43,6 +45,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	pBlackboard->AddData("interface", static_cast<IExamInterface*>(m_pInterface));
 	pBlackboard->AddData("steering", static_cast<SteeringPlugin_Output*>(m_pSteeringOutputData));
 	pBlackboard->AddData("inventoryManager", static_cast<InventoryManager*>(m_pInventoryManager));
+	pBlackboard->AddData("steeringManager", static_cast<SteeringManager*>(m_pSteeringManager));
 	pBlackboard->AddData("entitiesInFOV", static_cast<std::vector<EntityInfo>*>(m_pEntitiesInFOV));
 	pBlackboard->AddData("housesInFOV", static_cast<std::vector<HouseInfo>*>(m_pHousesInFOV));
 	pBlackboard->AddData("housesChecked", static_cast<std::vector<HouseCheck>*>(m_pHousesChecked));
@@ -160,6 +163,7 @@ void Plugin::DllShutdown()
 	SAFE_DELETE(m_pBehaviorTree);
 	SAFE_DELETE(m_pSteeringOutputData);
 	SAFE_DELETE(m_pInventoryManager);
+	SAFE_DELETE(m_pSteeringManager);
 	SAFE_DELETE(m_pEntitiesInFOV);
 	SAFE_DELETE(m_pHousesInFOV);
 	SAFE_DELETE(m_pHousesChecked);

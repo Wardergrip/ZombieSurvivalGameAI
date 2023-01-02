@@ -15,6 +15,7 @@
 #include "..\inc\EliteMath\EVector2.h"
 #include "HelperFuncts.h"
 #include "InventoryManager.h"
+#include "SteeringManager.h"
 #include "HouseCheck.h"
 #include "Timer.h"
 
@@ -26,71 +27,30 @@ namespace BT_Actions
 {
 	Elite::BehaviorState CheeseStrategyV1(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* pInterface{ nullptr };
-		SteeringPlugin_Output* pSteering{};
+		SteeringManager* pSteeringManager{};
 
-		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
-		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
-		{
-			return Elite::BehaviorState::Failure;
-		}
-
-		auto agentInfo = pInterface->Agent_GetInfo();
 
 		auto target = Elite::Vector2{ 0,-100 };
 
-		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
-		//auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(Elite::Vector2(-100,0));
-
-		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
-		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+		pSteeringManager->Seek(target);
 
 		return Elite::BehaviorState::Success;
 	}
 
 	Elite::BehaviorState ChangeToWander(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* pInterface{ nullptr };
-		SteeringPlugin_Output* pSteering{};
+		SteeringManager* pSteeringManager{};
 
-		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
-		{
-			return Elite::BehaviorState::Failure;
-		}
-		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
 
-		auto agentInfo = pInterface->Agent_GetInfo();
-#pragma region Calcs
-		float wanderAngle{ agentInfo.Orientation};
-		const constexpr float maxAngleChange{ 10.f };
-		const constexpr float offsetDistance{10.f};
-		const constexpr float radius{ 5.f };
-		const float randomAngle{ HF::ToRadians(static_cast<float>(rand() % static_cast<int>(HF::ToDegrees(maxAngleChange)))) };
-		const float sign{ (rand() % 2) ? 1.f : -1.f };
-		const float nextAngle{ wanderAngle +(sign * randomAngle)};
-		wanderAngle = nextAngle;
-		Elite::Vector2 circleCenter{ agentInfo.Position + (HF::AngleToLookDirection(agentInfo.Orientation) * offsetDistance)};
-		Elite::Vector2 target{ circleCenter.x + (std::cosf(wanderAngle) * radius),circleCenter.y + (std::sinf(wanderAngle) * radius) };
-		Elite::Vector2 targetVector{ target - agentInfo.Position };
-#pragma endregion
-		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
-		//auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(Elite::Vector2(-100,0));
-
-		pSteering->AutoOrient = true;
-
-		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
-		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
-
-		pInterface->Draw_Circle(circleCenter, radius, Elite::Vector3{0,1,0});
-		pInterface->Draw_Direction(agentInfo.Position, targetVector, offsetDistance, Elite::Vector3{0,1,0});
+		pSteeringManager->Wander();
 
 		return Elite::BehaviorState::Success;
 	}
@@ -98,14 +58,14 @@ namespace BT_Actions
 	Elite::BehaviorState GoToFirstHouse(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
-		SteeringPlugin_Output* pSteering{};
+		SteeringManager* pSteeringManager{};
 		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
 
 		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
-		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
@@ -132,12 +92,7 @@ namespace BT_Actions
 
 		auto target = pHousesInFOV->begin()->Center;
 
-		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
-
-		pSteering->AutoOrient = true;
-		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
-		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+		pSteeringManager->Seek(target);
 
 		return Elite::BehaviorState::Success;
 	}
@@ -145,7 +100,7 @@ namespace BT_Actions
 	Elite::BehaviorState LootFOV(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
-		SteeringPlugin_Output* pSteering{};
+		SteeringManager* pSteeringManager{};
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 		InventoryManager* pInventoryManager{ nullptr };
 		
@@ -153,7 +108,7 @@ namespace BT_Actions
 		{
 			return Elite::BehaviorState::Failure;
 		}
-		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
@@ -188,33 +143,21 @@ namespace BT_Actions
 			return Elite::BehaviorState::Failure;
 		}
 
-		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
-
-		pSteering->AutoOrient = true;
-		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
-		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+		pSteeringManager->Seek(target);
 
 		return Elite::BehaviorState::Success;
 	}
 
 	Elite::BehaviorState SpinAround(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* pInterface{ nullptr };
-		SteeringPlugin_Output* pSteering{};
+		SteeringManager* pSteeringManager{};
 
-		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
-		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
-		{
-			return Elite::BehaviorState::Failure;
-		}
-		
-		pSteering->AutoOrient = false;
-		pSteering->LinearVelocity = Elite::ZeroVector2;
-		pSteering->AngularVelocity = pInterface->Agent_GetInfo().MaxAngularSpeed;
+
+		pSteeringManager->SpinAround();
 
 		return Elite::BehaviorState::Success;
 	}
@@ -222,13 +165,13 @@ namespace BT_Actions
 	Elite::BehaviorState GoOutsideOfHouse(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
-		SteeringPlugin_Output* pSteering{};
+		SteeringManager* pSteeringManager{};
 
 		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
-		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
@@ -257,14 +200,11 @@ namespace BT_Actions
 
 		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
 
-		pSteering->AutoOrient = true;
-		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
-		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+		pSteeringManager->Seek(target);
 
 		if (Elite::Distance(nextTargetPos, agentInfo.Position) < 2.f)
 		{
-			pSteering->LinearVelocity = Elite::ZeroVector2;
+			pSteeringManager->StopMovement();
 			pBlackboard->ChangeData("houseLeaveLocationValid", false);
 		}
 
@@ -306,14 +246,14 @@ namespace BT_Actions
 	Elite::BehaviorState SearchHouse(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
-		SteeringPlugin_Output* pSteering{ nullptr };
+		SteeringManager* pSteeringManager{ nullptr };
 		std::vector<HouseCheck>* pHousesChecked{ nullptr };
 
 		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
-		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
@@ -340,14 +280,7 @@ namespace BT_Actions
 			return Elite::BehaviorState::Failure;
 		}
 
-		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
-
-		pInterface->Draw_Circle(target, 2.f, Elite::Vector3{ 0,1,1 });
-
-		pSteering->AutoOrient = true;
-		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
-		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+		pSteeringManager->Seek(target);
 
 		return Elite::BehaviorState::Success;
 	}
@@ -355,7 +288,7 @@ namespace BT_Actions
 	Elite::BehaviorState KiteAndShoot(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
-		SteeringPlugin_Output* pSteering{ nullptr };
+		SteeringManager* pSteeringManager{ nullptr };
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 		InventoryManager* pInventoryManager{ nullptr };
 
@@ -363,7 +296,7 @@ namespace BT_Actions
 		{
 			return Elite::BehaviorState::Failure;
 		}
-		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
@@ -378,7 +311,7 @@ namespace BT_Actions
 
 		auto agentInfo = pInterface->Agent_GetInfo();
 
-		pSteering->AutoOrient = false;
+		pSteeringManager->AutoOrient(false);
 
 		bool atleastOneEnemyinFOV{ false };
 
@@ -393,7 +326,7 @@ namespace BT_Actions
 		}
 		if (!atleastOneEnemyinFOV)
 		{
-			pSteering->AngularVelocity = agentInfo.MaxAngularSpeed;
+			pSteeringManager->SpinAround();
 			return Elite::BehaviorState::Running;
 		}
 
@@ -421,10 +354,7 @@ namespace BT_Actions
 		}
 
 		// Else, face towards closest enemy
-		desiredDirection.Normalize();
-		const float agentRot{ agentInfo.Orientation + 0.5f * static_cast<float>(M_PI) };
-		Elite::Vector2 agentDirection{ std::cosf(agentRot),std::sinf(agentRot) };
-		pSteering->AngularVelocity = (desiredDirection.Dot(agentDirection)) * agentInfo.MaxAngularSpeed;
+		pSteeringManager->Face(closestEnemy.Location);
 
 		return Elite::BehaviorState::Success;
 	}
@@ -432,14 +362,14 @@ namespace BT_Actions
 	Elite::BehaviorState RunFromEnemy(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
-		SteeringPlugin_Output* pSteering{ nullptr };
+		SteeringManager* pSteeringManager{ nullptr };
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 
 		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
-		if (pBlackboard->GetData("steering", pSteering) == false || pSteering == nullptr)
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
@@ -450,7 +380,7 @@ namespace BT_Actions
 
 		auto agentInfo = pInterface->Agent_GetInfo();
 
-		pSteering->AutoOrient = false;
+		pSteeringManager->AutoOrient(false);
 
 		bool atleastOneEnemyinFOV{ false };
 
@@ -465,7 +395,7 @@ namespace BT_Actions
 		}
 		if (!atleastOneEnemyinFOV)
 		{
-			pSteering->AngularVelocity = agentInfo.MaxAngularSpeed;
+			pSteeringManager->SpinAround();
 			return Elite::BehaviorState::Running;
 		}
 
@@ -485,30 +415,15 @@ namespace BT_Actions
 		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleEps)
 		{
 			// If so, just move backwards
-			auto target = agentInfo.Position - (desiredDirection.GetNormalized() * 10);
-
-			auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
-
-			pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-			pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
-			pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+			pSteeringManager->Flee(closestEnemy.Location);
 			return Elite::BehaviorState::Success;
 		}
 
 		// Else, face towards closest enemy
-		desiredDirection.Normalize();
-		const float agentRot{ agentInfo.Orientation + 0.5f * static_cast<float>(M_PI) };
-		Elite::Vector2 agentDirection{ std::cosf(agentRot),std::sinf(agentRot) };
-		pSteering->AngularVelocity = (desiredDirection.Dot(agentDirection)) * agentInfo.MaxAngularSpeed;
+		pSteeringManager->Face(closestEnemy.Location);
 
 		// And move backwards
-		auto target = agentInfo.Position - (desiredDirection.GetNormalized() * 2.f);
-
-		auto nextTargetPos = pInterface->NavMesh_GetClosestPathPoint(target);
-
-		pSteering->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-		pSteering->LinearVelocity.Normalize();						  //Normalize Desired Velocity
-		pSteering->LinearVelocity *= agentInfo.MaxLinearSpeed;		  //Rescale to Max Speed
+		pSteeringManager->Flee(closestEnemy.Location);
 
 		return Elite::BehaviorState::Success;
 	}

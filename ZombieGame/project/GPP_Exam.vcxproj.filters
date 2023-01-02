@@ -5,6 +5,7 @@
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="EBehaviorTree.cpp" />
     <ClCompile Include="InventoryManager.cpp" />
+    <ClCompile Include="SteeringManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
@@ -17,5 +18,6 @@
     <ClInclude Include="InventoryManager.h" />
     <ClInclude Include="HouseCheck.h" />
     <ClInclude Include="Timer.h" />
+    <ClInclude Include="SteeringManager.h" />
   </ItemGroup>
 </Project>
