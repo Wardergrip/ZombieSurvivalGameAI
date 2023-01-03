@@ -101,13 +101,6 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 										new BehaviorAction(&BT_Actions::GoToFirstHouse)
 									}
 								),
-								new BehaviorSequence
-								(
-									{
-										new BehaviorConditional(&BT_Conditions::AgentInsideHouse),
-										new BehaviorAction(&BT_Actions::GoOutsideOfHouse)
-									}
-								),
 								// Run otherwise
 								new BehaviorAction(&BT_Actions::RunFromEnemy)
 							}

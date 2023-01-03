@@ -218,7 +218,11 @@ bool InventoryManager::UseGun()
 		gunIterator = pistolIterator;
 	}
 	UINT gunIdx{ static_cast<UINT>(std::distance(m_Inventory.begin(),gunIterator)) };
-	m_pInterface->Inventory_UseItem(gunIdx);
+	if (!m_pInterface->Inventory_UseItem(gunIdx))
+	{
+		m_pInterface->Inventory_RemoveItem(gunIdx);
+		m_Inventory.at(gunIdx) = eItemType::RANDOM_DROP;
+	}
 	ItemInfo itemInfo{};
 	if (m_pInterface->Inventory_GetItem(gunIdx, itemInfo))
 	{

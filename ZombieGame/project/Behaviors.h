@@ -266,16 +266,18 @@ namespace BT_Actions
 
 		auto agentInfo = pInterface->Agent_GetInfo();
 
-		Elite::Vector2 target;
+		Elite::Vector2 target{ 10000.f,0 };
 		bool found{ false };
 		for (auto& house : *pHousesChecked)
 		{
 			if (house.IsDone()) continue;
 			house.UpdateCheckedCorners(agentInfo.Position);
 			if (house.IsDone()) continue;
-			target = house.GetNextCorner();
+			if (house.GetNextCorner().DistanceSquared(agentInfo.Position) < target.DistanceSquared(agentInfo.Position))
+			{
+				target = house.GetNextCorner();
+			}
 			found = true;
-			break;
 		}
 		if (found == false)
 		{
