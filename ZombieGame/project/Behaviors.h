@@ -427,6 +427,68 @@ namespace BT_Actions
 
 		return Elite::BehaviorState::Success;
 	}
+
+	Elite::BehaviorState FleeFromPurgeZone(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		SteeringManager* pSteeringManager{ nullptr };
+		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("entitiesInFOV", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		// Find all purgezones
+		std::vector<int> purgeZoneIndices;
+		{
+			int i{};
+			for (const auto& entity : *pEntitiesInFOV)
+			{
+				if (entity.Type == eEntityType::PURGEZONE)
+				{
+					purgeZoneIndices.push_back(i);
+				}
+				++i;
+			}
+		}
+
+		// No purgezones found
+		if (purgeZoneIndices.empty())
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+		// Find closest purgezone
+		EntityInfo closestPurgeZone;
+		closestPurgeZone.Location.x = 1000.f;
+		for (int purgeZoneIdx : purgeZoneIndices)
+		{
+			if (agentInfo.Position.Distance(pEntitiesInFOV->at(purgeZoneIdx).Location) < agentInfo.Position.Distance(closestPurgeZone.Location))
+			{
+				closestPurgeZone = pEntitiesInFOV->at(purgeZoneIdx);
+			}
+		}
+
+		// Face the purgezone
+		pSteeringManager->Face(closestPurgeZone.Location);
+
+		// Run away from it 
+		const constexpr float fleeFactor{ 10.f };
+		pSteeringManager->Flee(closestPurgeZone.Location, fleeFactor);
+
+		return Elite::BehaviorState::Success;
+	}
 	
 }
 
@@ -611,6 +673,26 @@ namespace BT_Conditions
 		}
 
 		return pInterface->Agent_GetInfo().IsInHouse;
+	}
+
+	bool IsPurgeZoneInFOV(Elite::Blackboard* pBlackboard)
+	{
+		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+
+		if (pBlackboard->GetData("entitiesInFOV", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		{
+			return false;
+		}
+
+		for (const auto& entity : *pEntitiesInFOV)
+		{
+			if (entity.Type == eEntityType::PURGEZONE)
+			{
+				return true;
+			}
+		}
+	
+		return false;
 	}
 }
 

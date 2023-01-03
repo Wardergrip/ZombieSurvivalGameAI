@@ -58,12 +58,21 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	// Root behavior is the first behavior that is connected to the root node.
 	m_pBehaviorTree = new BehaviorTree(pBlackboard,  new BehaviorGroup
 	(
-		// Start Group: execute all things regardless
+		// Start Group: execute all things regardless of outcome
 		{
 			// World Selector Root
 		new BehaviorSelector
 		(
 			{
+				new BehaviorSequence
+				(
+					{
+						// Is there a purgezone in our FOV?
+						new BehaviorConditional(&BT_Conditions::IsPurgeZoneInFOV),
+						// Face and flee from purgezone
+						new BehaviorAction(&BT_Actions::FleeFromPurgeZone)
+					}
+				),
 				new BehaviorSequence
 				(
 					{
@@ -181,7 +190,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.EnemyCount = 20; //How many enemies? (Default = 20)
 	params.GodMode = false; //GodMode > You can't die, can be useful to inspect certain behaviors (Default = false)
 	params.LevelFile = "GameLevel.gppl";
-	params.AutoGrabClosestItem = true; //A call to Item_Grab(...) returns the closest item that can be grabbed. (EntityInfo argument is ignored)
+	params.AutoGrabClosestItem = false; //A call to Item_Grab(...) returns the closest item that can be grabbed. (EntityInfo argument is ignored)
 	params.StartingDifficultyStage = 1;
 	params.InfiniteStamina = false;
 	params.SpawnDebugPistol = true;
