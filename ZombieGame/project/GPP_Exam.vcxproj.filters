@@ -6,6 +6,7 @@
     <ClCompile Include="EBehaviorTree.cpp" />
     <ClCompile Include="InventoryManager.cpp" />
     <ClCompile Include="SteeringManager.cpp" />
+    <ClCompile Include="ExplorationManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
@@ -19,5 +20,6 @@
     <ClInclude Include="HouseCheck.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="SteeringManager.h" />
+    <ClInclude Include="ExplorationManager.h" />
   </ItemGroup>
 </Project>

@@ -12,6 +12,7 @@ class IBaseInterface;
 class IExamInterface;
 class InventoryManager;
 class SteeringManager;
+class ExplorationManager;
 struct Timer;
 
 
@@ -53,6 +54,7 @@ private:
 	SteeringPlugin_Output* m_pSteeringOutputData;
 	InventoryManager* m_pInventoryManager;
 	SteeringManager* m_pSteeringManager;
+	ExplorationManager* m_pExplorationManager;
 	std::vector<EntityInfo>* m_pEntitiesInFOV;
 	std::vector<HouseInfo>* m_pHousesInFOV;
 	std::vector<HouseCheck>* m_pHousesChecked;

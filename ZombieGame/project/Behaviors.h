@@ -16,6 +16,7 @@
 #include "HelperFuncts.h"
 #include "InventoryManager.h"
 #include "SteeringManager.h"
+#include "ExplorationManager.h"
 #include "HouseCheck.h"
 #include "Timer.h"
 
@@ -92,6 +93,7 @@ namespace BT_Actions
 
 		auto target = pHousesInFOV->begin()->Center;
 
+		pSteeringManager->AutoOrient(true);
 		pSteeringManager->Seek(target);
 
 		return Elite::BehaviorState::Success;
@@ -280,6 +282,7 @@ namespace BT_Actions
 			return Elite::BehaviorState::Failure;
 		}
 
+		pSteeringManager->AutoOrient(true);
 		pSteeringManager->Seek(target);
 
 		return Elite::BehaviorState::Success;
@@ -406,13 +409,14 @@ namespace BT_Actions
 			}
 		}
 
+		const constexpr float fleeFactor{ 10.f };
 		const constexpr float angleEps{ 0.05f };
 		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
 		// Check if we're oriented to the closest enemy
 		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleEps)
 		{
 			// If so, just move backwards
-			pSteeringManager->Flee(closestEnemy.Location);
+			pSteeringManager->Flee(closestEnemy.Location, fleeFactor);
 			return Elite::BehaviorState::Success;
 		}
 
@@ -420,7 +424,7 @@ namespace BT_Actions
 		pSteeringManager->Face(closestEnemy.Location);
 
 		// And move backwards
-		pSteeringManager->Flee(closestEnemy.Location);
+		pSteeringManager->Flee(closestEnemy.Location, fleeFactor);
 
 		return Elite::BehaviorState::Success;
 	}
@@ -483,6 +487,26 @@ namespace BT_Actions
 		// Run away from it 
 		const constexpr float fleeFactor{ 10.f };
 		pSteeringManager->Flee(closestPurgeZone.Location, fleeFactor);
+
+		return Elite::BehaviorState::Success;
+	}
+
+	Elite::BehaviorState SimpleExplore(Elite::Blackboard* pBlackboard)
+	{
+		SteeringManager* pSteeringManager{ nullptr };
+		ExplorationManager* pExplorationManager{};
+
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("explorationManager", pExplorationManager) == false || pExplorationManager == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		pSteeringManager->AutoOrient(true);
+		pSteeringManager->Seek(pExplorationManager->GetNextLocation());
 
 		return Elite::BehaviorState::Success;
 	}

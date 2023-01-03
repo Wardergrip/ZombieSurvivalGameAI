@@ -6,6 +6,7 @@
 #include "Behaviors.h"
 #include "InventoryManager.h"
 #include "SteeringManager.h"
+#include "ExplorationManager.h"
 #include "Timer.h"
 
 using namespace std;
@@ -38,6 +39,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pHousesChecked = new std::vector<HouseCheck>();
 	m_pInventoryManager = new InventoryManager(m_pInterface);
 	m_pSteeringManager = new SteeringManager(m_pInterface, m_pSteeringOutputData);
+	m_pExplorationManager = new ExplorationManager(m_pInterface,50);
 	m_pLastDangerTimer = new Timer(5.f,false);
 
 	// Initialise blackboard data
@@ -46,6 +48,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	pBlackboard->AddData("steering", static_cast<SteeringPlugin_Output*>(m_pSteeringOutputData));
 	pBlackboard->AddData("inventoryManager", static_cast<InventoryManager*>(m_pInventoryManager));
 	pBlackboard->AddData("steeringManager", static_cast<SteeringManager*>(m_pSteeringManager));
+	pBlackboard->AddData("explorationManager", static_cast<ExplorationManager*>(m_pExplorationManager));
 	pBlackboard->AddData("entitiesInFOV", static_cast<std::vector<EntityInfo>*>(m_pEntitiesInFOV));
 	pBlackboard->AddData("housesInFOV", static_cast<std::vector<HouseInfo>*>(m_pHousesInFOV));
 	pBlackboard->AddData("housesChecked", static_cast<std::vector<HouseCheck>*>(m_pHousesChecked));
@@ -90,6 +93,21 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 										new BehaviorAction(&BT_Actions::KiteAndShoot)
 									}
 								),
+								new BehaviorSequence
+								(
+									{
+										new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
+										new BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
+										new BehaviorAction(&BT_Actions::GoToFirstHouse)
+									}
+								),
+								new BehaviorSequence
+								(
+									{
+										new BehaviorConditional(&BT_Conditions::AgentInsideHouse),
+										new BehaviorAction(&BT_Actions::GoOutsideOfHouse)
+									}
+								),
 								// Run otherwise
 								new BehaviorAction(&BT_Actions::RunFromEnemy)
 							}
@@ -129,6 +147,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 					}
 				),
 				// Nothing left to do, explore!
+				new BehaviorAction(&BT_Actions::SimpleExplore),
 				new BehaviorAction(&BT_Actions::ChangeToWander)
 			}
 		),
@@ -173,6 +192,7 @@ void Plugin::DllShutdown()
 	SAFE_DELETE(m_pSteeringOutputData);
 	SAFE_DELETE(m_pInventoryManager);
 	SAFE_DELETE(m_pSteeringManager);
+	SAFE_DELETE(m_pExplorationManager);
 	SAFE_DELETE(m_pEntitiesInFOV);
 	SAFE_DELETE(m_pHousesInFOV);
 	SAFE_DELETE(m_pHousesChecked);
@@ -273,6 +293,9 @@ void Plugin::Update(float dt)
 // F12 ON THIS "SteeringPlugin_Output" STRUCT TO VIEW FILE
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
+	m_pExplorationManager->Update(dt);
+	m_pExplorationManager->DEBUG_DrawGrid();
+
 	if (!UpdateEntitiesInFOV())
 	{
 		std::cout << "Failed to update entities\n";
