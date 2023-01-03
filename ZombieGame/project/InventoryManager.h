@@ -9,7 +9,6 @@
 class InventoryManager final
 {
 public:
-public:
 	InventoryManager(IExamInterface* pInterface);
 	~InventoryManager() = default;
 

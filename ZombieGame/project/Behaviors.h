@@ -382,18 +382,15 @@ namespace BT_Actions
 
 		pSteeringManager->AutoOrient(false);
 
-		bool atleastOneEnemyinFOV{ false };
-
 		std::vector<int> enemyIdxs{};
 		for (int i{ 0 }; i < pEntitiesInFOV->size(); ++i)
 		{
 			if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
 			{
-				atleastOneEnemyinFOV = true;
 				enemyIdxs.push_back(i);
 			}
 		}
-		if (!atleastOneEnemyinFOV)
+		if (enemyIdxs.empty())
 		{
 			pSteeringManager->SpinAround();
 			return Elite::BehaviorState::Running;

@@ -8,10 +8,10 @@ public:
 	SteeringManager(IExamInterface* pInterface, SteeringPlugin_Output* pSteering);
 	~SteeringManager() = default;
 
-	SteeringManager(const SteeringManager& inventoryManager) = delete;
-	SteeringManager(SteeringManager&& inventoryManager) = delete;
-	SteeringManager& operator=(const SteeringManager& inventoryManager) = delete;
-	SteeringManager& operator=(SteeringManager&& inventoryManager) = delete;
+	SteeringManager(const SteeringManager& steeringManager) = delete;
+	SteeringManager(SteeringManager&& steeringManager) = delete;
+	SteeringManager& operator=(const SteeringManager& steeringManager) = delete;
+	SteeringManager& operator=(SteeringManager&& steeringManager) = delete;
 
 	
 	void AutoOrient(bool state);
