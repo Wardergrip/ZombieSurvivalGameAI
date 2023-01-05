@@ -59,6 +59,7 @@ private:
 	std::vector<HouseInfo>* m_pHousesInFOV;
 	std::vector<HouseCheck>* m_pHousesChecked;
 	Timer* m_pLastDangerTimer;
+	HouseCheck* m_pNextHouse;
 };
 
 //ENTRY

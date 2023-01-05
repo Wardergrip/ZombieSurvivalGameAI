@@ -226,7 +226,8 @@ bool InventoryManager::UseGun()
 	ItemInfo itemInfo{};
 	if (m_pInterface->Inventory_GetItem(gunIdx, itemInfo))
 	{
-		if (m_pInterface->Weapon_GetAmmo(itemInfo) <= 0)
+		auto weaponAmmo = m_pInterface->Weapon_GetAmmo(itemInfo);
+		if (weaponAmmo == 0)
 		{
 			m_pInterface->Inventory_RemoveItem(gunIdx);
 			m_Inventory.at(gunIdx) = eItemType::RANDOM_DROP;

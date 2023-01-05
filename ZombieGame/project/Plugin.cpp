@@ -37,6 +37,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pEntitiesInFOV = new std::vector<EntityInfo>();
 	m_pHousesInFOV = new std::vector<HouseInfo>();
 	m_pHousesChecked = new std::vector<HouseCheck>();
+	m_pNextHouse = nullptr;
 	m_pInventoryManager = new InventoryManager(m_pInterface);
 	m_pSteeringManager = new SteeringManager(m_pInterface, m_pSteeringOutputData);
 	m_pExplorationManager = new ExplorationManager(m_pInterface,50);
@@ -52,6 +53,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	pBlackboard->AddData("entitiesInFOV", static_cast<std::vector<EntityInfo>*>(m_pEntitiesInFOV));
 	pBlackboard->AddData("housesInFOV", static_cast<std::vector<HouseInfo>*>(m_pHousesInFOV));
 	pBlackboard->AddData("housesChecked", static_cast<std::vector<HouseCheck>*>(m_pHousesChecked));
+	pBlackboard->AddData("nextHouse", static_cast<HouseCheck*>(m_pNextHouse));
 	pBlackboard->AddData("houseLeaveLocation", Elite::Vector2{ 0,0 });
 	pBlackboard->AddData("houseLeaveLocationValid", static_cast<bool>(false));
 	pBlackboard->AddData("lastDangerTimer", static_cast<Timer*>(m_pLastDangerTimer));
@@ -108,12 +110,25 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 					}
 				),
 				// Go to unlooted houses, GoToFirstHouse saves location before we enter
-				new BehaviorSequence
+				new BehaviorSelector
 				(
-					{
-						new BehaviorConditional(&BT_Conditions::IsHouseInFOVUnlooted),
-						new BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
-						new BehaviorAction(&BT_Actions::GoToFirstHouse)
+					{		
+						new BehaviorSequence
+						(
+							{
+								new BehaviorConditional(&BT_Conditions::IsHouseInFOVUnlooted),
+								new BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
+								new BehaviorAction(&BT_Actions::GoToFirstHouse)
+							}
+						),
+						new BehaviorSequence
+						(
+							{
+								new BehaviorConditional(&BT_Conditions::IsNextHouseAvailable),
+								new BehaviorInvertConditional(&BT_Conditions::AgentInsideHouse),
+								new BehaviorAction(&BT_Actions::GoToNextHouse)
+							}
+						)
 					}
 				),
 				// Take all loot in case we see it, unless we are full. Insta delete garbage

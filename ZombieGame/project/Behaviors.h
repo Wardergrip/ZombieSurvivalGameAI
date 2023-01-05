@@ -130,15 +130,28 @@ namespace BT_Actions
 
 		auto agentInfo = pInterface->Agent_GetInfo();
 
-		if (pEntitiesInFOV->at(0).Type != eEntityType::ITEM)
+		EntityInfo closestItem{};
+		closestItem.Location.x = 1000.f;
+		for (const auto& entity : *pEntitiesInFOV)
+		{
+			if (entity.Type == eEntityType::ITEM)
+			{
+				if (entity.Location.DistanceSquared(agentInfo.Position) < closestItem.Location.DistanceSquared(agentInfo.Position))
+				{
+					closestItem = entity;
+				}
+			}
+		}
+
+		if (closestItem.Location.x == 1000.f)
 		{
 			return Elite::BehaviorState::Failure;
 		}
-		auto target = pEntitiesInFOV->at(0).Location;
+		auto target = closestItem.Location;
 
 		if ((target - pInterface->Agent_GetInfo().Position).MagnitudeSquared() < agentInfo.GrabRange * agentInfo.GrabRange)
 		{
-			if (pInventoryManager->GrabAndAddItem(pEntitiesInFOV->at(0)))
+			if (pInventoryManager->GrabAndAddItem(closestItem))
 			{
 				return Elite::BehaviorState::Running;
 			}
@@ -281,6 +294,7 @@ namespace BT_Actions
 		}
 		if (found == false)
 		{
+			pBlackboard->ChangeData("nextHouse", static_cast<HouseCheck*>(nullptr));
 			return Elite::BehaviorState::Failure;
 		}
 
@@ -513,6 +527,24 @@ namespace BT_Actions
 		return Elite::BehaviorState::Success;
 	}
 	
+	Elite::BehaviorState GoToNextHouse(Elite::Blackboard* pBlackboard)
+	{
+		SteeringManager* pSteeringManager{ nullptr };
+		HouseCheck* pNextHouse{ nullptr };
+
+		if (pBlackboard->GetData("steeringManager", pSteeringManager) == false || pSteeringManager == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		if (pBlackboard->GetData("nextHouse", pNextHouse) == false || pNextHouse == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		pSteeringManager->Seek(pNextHouse->Center);
+
+		return Elite::BehaviorState::Success;
+	}
 }
 
 //-----------------------------------------------------------------
@@ -590,10 +622,14 @@ namespace BT_Conditions
 
 		for (const auto& houseFOV : *pHousesInFOV)
 		{
-			for (const auto& houseCheck : *pHousesChecked)
+			for (auto& houseCheck : *pHousesChecked)
 			{
 				if (houseFOV.Center == houseCheck.Center)
 				{
+					if (!houseCheck.IsDone())
+					{
+						pBlackboard->ChangeData("nextHouse", static_cast<HouseCheck*>(&houseCheck));
+					}
 					return !houseCheck.IsDone();
 				}
 			}
@@ -716,6 +752,18 @@ namespace BT_Conditions
 		}
 	
 		return false;
+	}
+
+	bool IsNextHouseAvailable(Elite::Blackboard* pBlackboard)
+	{
+		HouseCheck* pNextHouse{ nullptr };
+
+		if (pBlackboard->GetData("nextHouse", pNextHouse) == false || pNextHouse == nullptr)
+		{
+			return false;
+		}
+
+		return true;
 	}
 }
 
