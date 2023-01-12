@@ -87,6 +87,12 @@ bool InventoryManager::IsInventoryFull() const
 	);
 }
 
+bool InventoryManager::IsNeeded(eItemType itemType) const
+{
+	int count = std::count(m_Inventory.begin(), m_Inventory.end(), itemType);
+	return (count == 0);
+}
+
 UINT InventoryManager::GetFreeItemSlot() const
 {
 	ItemInfo itemInfo;
@@ -251,5 +257,66 @@ void InventoryManager::DeleteGarbage()
 				m_Inventory.at(i) = eItemType::RANDOM_DROP;
 			}
 		}
+	}
+}
+
+void InventoryManager::DiscardExcess()
+{
+	// -- Remove excess guns first --
+	int pistolAmount = std::count(m_Inventory.begin(), m_Inventory.end(), eItemType::PISTOL);
+	int shotgunAmount = std::count(m_Inventory.begin(), m_Inventory.end(), eItemType::SHOTGUN);
+	// We have both a pistol and shotgun
+	if (pistolAmount > 0 && shotgunAmount > 0)
+	{
+		auto pistolIterator = std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::PISTOL);
+		UINT gunIdx{ static_cast<UINT>(std::distance(m_Inventory.begin(),pistolIterator)) };
+
+		m_pInterface->Inventory_RemoveItem(gunIdx);
+		m_Inventory.at(gunIdx) = eItemType::RANDOM_DROP;
+		return;
+	}
+	// More than one pistol
+	else if (pistolAmount > 1)
+	{
+		auto pistolIterator = std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::PISTOL);
+		UINT gunIdx{ static_cast<UINT>(std::distance(m_Inventory.begin(),pistolIterator)) };
+
+		m_pInterface->Inventory_RemoveItem(gunIdx);
+		m_Inventory.at(gunIdx) = eItemType::RANDOM_DROP;
+		return;
+	}
+	// More than one shotgun
+	else if (shotgunAmount > 1)
+	{
+		auto shotgunIterator = std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::SHOTGUN);
+		UINT gunIdx{ static_cast<UINT>(std::distance(m_Inventory.begin(),shotgunIterator)) };
+
+		m_pInterface->Inventory_RemoveItem(gunIdx);
+		m_Inventory.at(gunIdx) = eItemType::RANDOM_DROP;
+		return;
+	}
+
+	// -- Remove excess medkits first --
+	int medkitAmount = std::count(m_Inventory.begin(), m_Inventory.end(), eItemType::MEDKIT);
+	// We have more than one medkit
+	if (medkitAmount > 1)
+	{
+		auto medkitIterator = std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::MEDKIT);
+		UINT medkitIdx{ static_cast<UINT>(std::distance(m_Inventory.begin(),medkitIterator)) };
+
+		m_pInterface->Inventory_RemoveItem(medkitIdx);
+		m_Inventory.at(medkitIdx) = eItemType::RANDOM_DROP;
+		return;
+	}
+	// We have more than one food
+	int foodAmount = std::count(m_Inventory.begin(), m_Inventory.end(), eItemType::FOOD);
+	if (foodAmount > 1)
+	{
+		auto foodIterator = std::find(m_Inventory.begin(), m_Inventory.end(), eItemType::FOOD);
+		UINT foodIdx{ static_cast<UINT>(std::distance(m_Inventory.begin(),foodIterator)) };
+
+		m_pInterface->Inventory_RemoveItem(foodIdx);
+		m_Inventory.at(foodIdx) = eItemType::RANDOM_DROP;
+		return;
 	}
 }

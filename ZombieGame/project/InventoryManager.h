@@ -22,6 +22,7 @@ public:
 	bool HaveGun() const;
 	bool HaveItem(eItemType itemType) const;
 	bool IsInventoryFull() const;
+	bool IsNeeded(eItemType itemType) const;
 
 	UINT GetFreeItemSlot() const;
 
@@ -30,6 +31,9 @@ public:
 	bool UseFood();
 	bool UseGun();
 	void DeleteGarbage();
+	
+	void DiscardExcess();
+
 private:
 	IExamInterface* m_pInterface = nullptr;
 	std::vector<eItemType> m_Inventory;

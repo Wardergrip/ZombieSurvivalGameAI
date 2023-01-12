@@ -258,6 +258,20 @@ namespace BT_Actions
 		return Elite::BehaviorState::Failure;
 	}
 
+	Elite::BehaviorState DiscardExcess(Elite::Blackboard* pBlackboard)
+	{
+		InventoryManager* pInventoryManager{ nullptr };
+
+		if (pBlackboard->GetData("inventoryManager", pInventoryManager) == false || pInventoryManager == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		pInventoryManager->DiscardExcess();
+
+		return Elite::BehaviorState::Success;
+	}
+
 	Elite::BehaviorState SearchHouse(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
@@ -335,7 +349,7 @@ namespace BT_Actions
 		bool atleastOneEnemyinFOV{ false };
 
 		std::vector<int> enemyIdxs{};
-		for (int i{0}; i < pEntitiesInFOV->size(); ++i)
+		for (size_t i{0}; i < pEntitiesInFOV->size(); ++i)
 		{
 			if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
 			{
@@ -402,7 +416,7 @@ namespace BT_Actions
 		pSteeringManager->AutoOrient(false);
 
 		std::vector<int> enemyIdxs{};
-		for (int i{ 0 }; i < pEntitiesInFOV->size(); ++i)
+		for (size_t i{ 0 }; i < pEntitiesInFOV->size(); ++i)
 		{
 			if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
 			{
@@ -567,7 +581,7 @@ namespace BT_Conditions
 			return false;
 		}
 
-		for (int i{0}; i < pEntitiesInFOV->size(); ++i)
+		for (size_t i{0}; i < pEntitiesInFOV->size(); ++i)
 		{
 			if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
 			{
@@ -634,6 +648,8 @@ namespace BT_Conditions
 				}
 			}
 		}
+
+		return false;
 	}
 
 	bool IsLootInFOV(Elite::Blackboard* pBlackboard)
@@ -650,7 +666,62 @@ namespace BT_Conditions
 			return false;
 		}
 
-		return pEntitiesInFOV->size() > 0;
+		for (const auto& entity : *pEntitiesInFOV)
+		{
+			if (entity.Type == eEntityType::ITEM)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	bool IsLootInFOVNeeded(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+		InventoryManager* pInventoryManager{ nullptr };
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+		{
+			return false;
+		}
+		if (pBlackboard->GetData("entitiesInFOV", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		{
+			return false;
+		}
+		if (pBlackboard->GetData("inventoryManager", pInventoryManager) == false || pInventoryManager == nullptr)
+		{
+			return false;
+		}
+
+		if (pEntitiesInFOV->empty())
+		{
+			return false;
+		}
+
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+		EntityInfo closestItem{};
+		closestItem.Location.x = 1000.f;
+		for (const auto& entity : *pEntitiesInFOV)
+		{
+			if (entity.Type == eEntityType::ITEM)
+			{
+				if (entity.Location.DistanceSquared(agentInfo.Position) < closestItem.Location.DistanceSquared(agentInfo.Position))
+				{
+					closestItem = entity;
+				}
+			}
+		}
+		ItemInfo itemInfo{};
+		if (!pInterface->Item_GetInfo(closestItem, itemInfo))
+		{
+			std::cout << "Exceptional error in <IsLootInFOVNeeded>\n";
+		}
+
+		return pInventoryManager->IsNeeded(itemInfo.Type);
 	}
 
 	bool IsInDanger(Elite::Blackboard* pBlackboard)

@@ -19,7 +19,7 @@ public:
 	void DEBUG_DrawGrid() const;
 
 	void Update(float dt);
-	Elite::Vector2 GetNextLocation() const;
+	Elite::Vector2 GetNextLocation();
 
 private:
 	struct GridInfo

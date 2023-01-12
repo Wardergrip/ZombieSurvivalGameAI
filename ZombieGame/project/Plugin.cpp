@@ -40,7 +40,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pNextHouse = nullptr;
 	m_pInventoryManager = new InventoryManager(m_pInterface);
 	m_pSteeringManager = new SteeringManager(m_pInterface, m_pSteeringOutputData);
-	m_pExplorationManager = new ExplorationManager(m_pInterface,50);
+	m_pExplorationManager = new ExplorationManager(m_pInterface,7);
 	m_pLastDangerTimer = new Timer(5.f,false);
 
 	// Initialise blackboard data
@@ -148,15 +148,20 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						new BehaviorSelector
 						(
 							{
-								new BehaviorAction(&BT_Actions::SearchHouse),
+								new BehaviorSequence
+								(
+									{
+										new BehaviorConditional(&BT_Conditions::IsHouseInFOVUnlooted),
+										new BehaviorAction(&BT_Actions::SearchHouse),
+									}
+								),
 								new BehaviorAction(&BT_Actions::GoOutsideOfHouse)
 							}
 						)
 					}
 				),
 				// Nothing left to do, explore!
-				new BehaviorAction(&BT_Actions::SimpleExplore),
-				new BehaviorAction(&BT_Actions::ChangeToWander)
+				new BehaviorAction(&BT_Actions::SimpleExplore)
 			}
 		),
 			// Inventory Selector Root
@@ -177,6 +182,16 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 					{
 						new BehaviorConditional(&BT_Conditions::DoIHaveFood),
 						new BehaviorAction(&BT_Actions::UseFood)
+					}
+				),
+				// If we're full with loot, we see loot and we could use it
+				new  Elite::BehaviorSequence
+				(
+					{
+						new BehaviorConditional(&BT_Conditions::IsInventoryFull),
+						new BehaviorConditional(&BT_Conditions::IsLootInFOV),
+						new BehaviorConditional(&BT_Conditions::IsLootInFOVNeeded),
+						new BehaviorAction(&BT_Actions::DiscardExcess)
 					}
 				)
 			}

@@ -57,24 +57,29 @@ void ExplorationManager::Update(float dt)
 {
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 	int idx = PosToIdx(agentInfo.Position + Elite::Vector2{0,m_GridHeight});
+	constexpr const float visitedRange{ 5 };
 	if (idx != -1 && m_Grid.at(idx).visited == false)
 	{
-		m_Grid.at(idx).visited = true;
+		if ((m_Grid.at(idx).Center - agentInfo.Position).MagnitudeSquared() <= (visitedRange * visitedRange))
+		{
+			m_Grid.at(idx).visited = true;
+		}
 	}
 }
 
-Elite::Vector2 ExplorationManager::GetNextLocation() const
+Elite::Vector2 ExplorationManager::GetNextLocation()
 {
 	auto rowCol = HF::GetRowColFromIndex(PosToIdx({ m_pInterface->Agent_GetInfo().Position + Elite::Vector2{ 0,m_GridHeight } }), m_Divisions);
 	auto row = rowCol.first;
 	auto col = rowCol.second;
 
-	float closestDistance{ 10000.f };
-	Elite::Vector2 target{};
+	float closestDistance{ FLT_MAX };
+	Elite::Vector2 agentPosition = m_pInterface->Agent_GetInfo().Position;
+	Elite::Vector2 target{0,0};
 	for (const auto& grid : m_Grid)
 	{
 		if (grid.visited) continue;
-		auto distance = grid.Center.DistanceSquared(m_OriginalLocation);
+		auto distance = grid.Center.DistanceSquared(m_OriginalLocation) + grid.Center.DistanceSquared(agentPosition) /*+ grid.Center.DistanceSquared(m_LastLocation)*/;
 		if (distance < closestDistance)
 		{
 			target = grid.Center;
@@ -87,7 +92,7 @@ Elite::Vector2 ExplorationManager::GetNextLocation() const
 
 int ExplorationManager::PosToIdx(const Elite::Vector2& p) const
 {
-	for (int i{0}; i < m_Grid.size(); ++i)
+	for (size_t i{0}; i < m_Grid.size(); ++i)
 	{
 		Elite::Vector2 topLeft{ m_Grid.at(i).Center + Elite::Vector2{-m_GridWidth / 2,m_GridHeight / 2} };
 		if (HF::IsPointInRect(topLeft, m_GridWidth, m_GridHeight, p))
