@@ -4,7 +4,7 @@ This was an exam for Gameplay Programming. The task was to make an AI for the hu
 
 https://user-images.githubusercontent.com/42802496/216970709-17d77c47-f5ea-4ebd-ac8b-f7ab91d82b06.mp4
 
-I opted for a behavior tree becausee of the simplicity.
+I opted for a behavior tree because of the simplicity.
 ![image2](https://user-images.githubusercontent.com/42802496/216971864-e69c17dd-47e8-447b-916c-b28a55f30df0.png)
 
 For those that are not familiar with behavior trees, you start at the root node and execute each node under it starting from the left.
